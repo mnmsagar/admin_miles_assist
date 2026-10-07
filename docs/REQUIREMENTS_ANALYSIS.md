@@ -218,6 +218,14 @@ All lists use shared pagination meta `{ page, limit, total, totalPages }`.
 
 "% change vs last month" = `(current - previous) / previous * 100`, computed in the service layer.
 
+### Dashboard tabs (Overview / Analytics / Reports / Settings)
+The dashboard shows four tabs, but only **Overview** has designed content in Figma
+(KPIs, revenue chart, recent transactions, alerts, system health) — served by the
+`/dashboard/*` endpoints. **Analytics / Reports / Settings** appear only as tab labels
+with no designed screens/content. Per the "don't invent beyond Figma" rule, no backend
+endpoints are built for them; they are treated as frontend-only navigation and can be
+backed later when their designs exist. **[DECISION]**
+
 ---
 
 ## 7. API Contract (planned — confirms CLAUDE.md minimum + detail endpoints)
