@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Eye } from 'lucide-react';
+import { Search, Plus, Eye, CalendarClock } from 'lucide-react';
 import { useApi } from '../lib/useApi';
 import {
   StatCard,
@@ -12,6 +12,7 @@ import {
   PageHeader,
 } from '../components/ui';
 import { NewBookingModal } from '../components/NewBookingModal';
+import { RescheduleBookingModal } from '../components/RescheduleBookingModal';
 import { money, num, date, titleCase, duration } from '../lib/format';
 import type { Paginated, Booking, Kpi } from '../lib/types';
 
@@ -43,6 +44,7 @@ export default function Bookings() {
   const limit = 10;
 
   const [addOpen, setAddOpen] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState<Booking | null>(null);
 
   const { data: stats, reload: reloadStats } = useApi<BookingStats>('/bookings/stats');
   const { data, loading, reload } = useApi<Paginated<Booking>>('/bookings', {
@@ -74,6 +76,16 @@ export default function Bookings() {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onCreated={afterCreate}
+      />
+
+      <RescheduleBookingModal
+        booking={rescheduleTarget}
+        open={!!rescheduleTarget}
+        onClose={() => setRescheduleTarget(null)}
+        onRescheduled={() => {
+          reload();
+          reloadStats();
+        }}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -195,7 +207,16 @@ export default function Bookings() {
                         {money(b.amount)}
                       </td>
                       <td className="px-3 py-3">
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setRescheduleTarget(b)}
+                            title="Reschedule Booking"
+                            disabled={b.status === 'CANCELLED'}
+                            className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-brand-600 disabled:opacity-30"
+                          >
+                            <CalendarClock className="size-4" />
+                          </button>
                           <Link
                             to={`/bookings/${b.id}`}
                             title="View"

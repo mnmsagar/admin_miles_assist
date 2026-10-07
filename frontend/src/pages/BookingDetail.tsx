@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useApi } from '../lib/useApi';
 import { api } from '../lib/api';
 import {
@@ -9,10 +9,9 @@ import {
   Avatar,
   Spinner,
   Badge,
-  Modal,
-  Field,
   ConfirmDialog,
 } from '../components/ui';
+import { RescheduleBookingModal } from '../components/RescheduleBookingModal';
 import { money, date, titleCase, duration } from '../lib/format';
 import type { Booking } from '../lib/types';
 
@@ -27,33 +26,12 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function toLocalInput(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 export default function BookingDetail() {
   const { id } = useParams();
   const { data: b, loading, reload } = useApi<Booking>(`/bookings/${id}`);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [when, setWhen] = useState('');
   const [busy, setBusy] = useState(false);
-
-  async function reschedule(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await api.patch(`/bookings/${id}`, {
-        scheduledAt: new Date(when).toISOString(),
-      });
-      setRescheduleOpen(false);
-      reload();
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function cancelBooking() {
     setBusy(true);
@@ -95,10 +73,7 @@ export default function BookingDetail() {
           <div className="flex gap-2">
             <button
               className="btn-ghost h-9"
-              onClick={() => {
-                setWhen(toLocalInput(b.scheduledAt));
-                setRescheduleOpen(true);
-              }}
+              onClick={() => setRescheduleOpen(true)}
               disabled={b.status === 'CANCELLED'}
             >
               Reschedule
@@ -114,36 +89,12 @@ export default function BookingDetail() {
         </div>
       </Card>
 
-      <Modal
+      <RescheduleBookingModal
+        booking={b}
         open={rescheduleOpen}
         onClose={() => setRescheduleOpen(false)}
-        title="Reschedule Booking"
-      >
-        <form onSubmit={reschedule} className="space-y-3">
-          <Field label="New Date & Time">
-            <input
-              type="datetime-local"
-              className="input"
-              value={when}
-              onChange={(e) => setWhen(e.target.value)}
-              required
-            />
-          </Field>
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              className="btn-ghost h-9"
-              onClick={() => setRescheduleOpen(false)}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary h-9" disabled={busy}>
-              {busy && <Loader2 className="size-4 animate-spin" />}
-              Save
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onRescheduled={reload}
+      />
 
       <ConfirmDialog
         open={cancelOpen}

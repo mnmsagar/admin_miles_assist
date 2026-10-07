@@ -184,12 +184,24 @@ export class BookingsService {
           ? 'Booking Rescheduled'
           : 'Booking Updated';
 
+    const eventDescription =
+      dto.scheduledAt && dto.meetingTimeSlot
+        ? `Rescheduled to ${dto.meetingTimeSlot}`
+        : dto.scheduledAt
+          ? `Rescheduled to ${new Date(dto.scheduledAt).toLocaleString()}`
+          : undefined;
+
     return this.prisma.booking.update({
       where: { id },
       data: {
         ...dto,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
-        events: { create: { label: eventLabel } },
+        events: {
+          create: {
+            label: eventLabel,
+            description: eventDescription,
+          },
+        },
       },
       include: { events: { orderBy: { occurredAt: 'desc' } } },
     });
