@@ -12,7 +12,7 @@ import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, expandVariables: true }),
     ThrottlerModule.forRoot([
       {
         ttl: Number(process.env.THROTTLE_TTL ?? 60) * 1000,

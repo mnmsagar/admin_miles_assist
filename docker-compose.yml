@@ -4,15 +4,15 @@ services:
     container_name: adminhub-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: adminhub
-      POSTGRES_PASSWORD: adminhub
-      POSTGRES_DB: adminhub
+      POSTGRES_USER: ${DB_USER:-adminhub}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-adminhub}
+      POSTGRES_DB: ${DB_NAME:-adminhub}
     ports:
-      - '5433:5432'
+      - '${DB_PORT:-5433}:5432'
     volumes:
       - adminhub_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U adminhub -d adminhub']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-adminhub} -d ${DB_NAME:-adminhub}']
       interval: 5s
       timeout: 5s
       retries: 10
