@@ -12,8 +12,20 @@ export function buildDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
   const name = env.DB_NAME ?? 'postgres';
   const ssl = String(env.DB_SSL ?? 'false').toLowerCase() === 'true';
 
-  const auth = `${encodeURIComponent(user)}:${encodeURIComponent(password)}`;
-  const query = ssl ? '?sslmode=require' : '';
+  // Connection pooling parameters
+  const poolLimit = env.DB_POOL_LIMIT ?? env.DB_CONNECTION_LIMIT ?? '10';
+  const poolTimeout = env.DB_POOL_TIMEOUT ?? '10';
+  const pgbouncer = String(env.DB_PGBOUNCER ?? 'false').toLowerCase() === 'true';
 
-  return `postgresql://${auth}@${host}:${port}/${name}${query}`;
+  const auth = `${encodeURIComponent(user)}:${encodeURIComponent(password)}`;
+  const params = new URLSearchParams();
+
+  if (ssl) params.set('sslmode', 'require');
+  if (poolLimit) params.set('connection_limit', String(poolLimit));
+  if (poolTimeout) params.set('pool_timeout', String(poolTimeout));
+  if (pgbouncer) params.set('pgbouncer', 'true');
+
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+
+  return `postgresql://${auth}@${host}:${port}/${name}${queryString}`;
 }

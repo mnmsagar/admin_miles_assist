@@ -251,8 +251,9 @@ revoked), and can be revoked via logout.
 - JWT guard applied globally (`@Public()` opts out); `@Roles()` for RBAC.
 - Short access tokens + rotating, revocable refresh tokens (SHA-256 hashed at rest).
 - Swagger UI is disabled when `NODE_ENV=production` (override with `SWAGGER_ENABLED=true`).
-- DB connection is composed from individual `DB_*` vars (no hand-written `DATABASE_URL`);
-  set `DB_SSL=true` for remote/managed Postgres. The app builds the URL in
-  `PrismaService`; the Prisma CLI gets it via `scripts/with-db-url.ts`.
+- DB connection is composed from individual `DB_*` vars with built-in connection
+  pooling (`connection_limit` & `pool_timeout`, configurable via `DB_POOL_LIMIT` & `DB_POOL_TIMEOUT`);
+  set `DB_SSL=true` for remote/managed Postgres and `DB_PGBOUNCER=true` for external poolers.
+  The app builds the URL in `PrismaService`; the Prisma CLI gets it via `scripts/with-db-url.ts`.
 
 See [docs/REQUIREMENTS_ANALYSIS.md](docs/REQUIREMENTS_ANALYSIS.md) and [docs/ER_DIAGRAM.md](docs/ER_DIAGRAM.md).
