@@ -23,8 +23,8 @@ export class BookingsService {
     if (query.search) {
       where.OR = [
         { displayId: { contains: query.search, mode: 'insensitive' } },
-        { user: { fullName: { contains: query.search, mode: 'insensitive' } } },
-        { user: { email: { contains: query.search, mode: 'insensitive' } } },
+        { customer: { fullName: { contains: query.search, mode: 'insensitive' } } },
+        { customer: { email: { contains: query.search, mode: 'insensitive' } } },
       ];
     }
     if (query.status) where.status = query.status;
@@ -48,7 +48,9 @@ export class BookingsService {
         skip: query.skip,
         take: query.limit,
         include: {
-          user: { select: { id: true, fullName: true, email: true, displayId: true } },
+          customer: {
+            select: { id: true, fullName: true, email: true, displayId: true },
+          },
         },
       }),
       this.prisma.booking.count({ where }),
@@ -61,7 +63,7 @@ export class BookingsService {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
       include: {
-        user: {
+        customer: {
           select: { id: true, fullName: true, email: true, displayId: true },
         },
         transaction: {
@@ -73,25 +75,25 @@ export class BookingsService {
     if (!booking) throw new NotFoundException(`Booking ${id} not found`);
 
     const completedCount = await this.prisma.booking.count({
-      where: { userId: booking.userId, status: 'COMPLETED' },
+      where: { customerId: booking.customerId, status: 'COMPLETED' },
     });
 
     return { ...booking, customerCompletedBookings: completedCount };
   }
 
   async create(dto: CreateBookingDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: dto.userId },
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: dto.customerId },
       select: { id: true },
     });
-    if (!user) throw new NotFoundException(`User ${dto.userId} not found`);
+    if (!customer) throw new NotFoundException(`Customer ${dto.customerId} not found`);
 
     const displayId = await this.generateDisplayId();
 
     return this.prisma.booking.create({
       data: {
         displayId,
-        userId: dto.userId,
+        customerId: dto.customerId,
         serviceType: dto.serviceType,
         scheduledAt: new Date(dto.scheduledAt),
         durationMinutes: dto.durationMinutes,

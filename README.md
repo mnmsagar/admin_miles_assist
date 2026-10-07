@@ -13,14 +13,22 @@ Built from the Figma design as the primary source of truth (see [docs/REQUIREMEN
 - **Swagger / OpenAPI** documentation
 - **Helmet** + **@nestjs/throttler** rate limiting
 
+## Domain model: two user populations
+This API powers the **admin portal**. A separate **customer portal/website** serves
+end-users. The two populations are modelled as separate tables:
+- **AdminUser** — operators who log into this admin API (roles: Super Admin / Admin / Editor / Viewer).
+- **Customer** — website end-users shown/managed in the admin portal; they own the
+  transactions and bookings. (No admin-portal login.)
+
 ## Modules
 | Module | Responsibility |
 |--------|----------------|
-| Auth | Login, current user, JWT guards, role guards |
-| Users | CRUD, filter/search/sort, bulk role/suspend, detail with activity + related records |
+| Auth | Admin login, refresh/logout, current user, JWT + role guards |
+| Admin Users | Admin-team CRUD, filter/search/sort, bulk role/suspend |
+| Customers | Customer CRUD, filter/search/sort, bulk suspend, detail with activity + transactions + bookings |
 | Transactions | List, detail (events + ledger), create, status change |
 | Bookings | List, detail (events + customer summary), create, reschedule/cancel |
-| Dashboard | KPI stats (with vs-last-month %), revenue charts, alerts, system health |
+| Dashboard | KPI stats (Total Users = customers, with vs-last-month %), revenue charts, alerts, system health |
 
 ---
 
@@ -114,15 +122,25 @@ revoked), and can be revoked via logout.
 | GET | `/dashboard/alerts` | System alerts |
 | GET | `/dashboard/health` | Uptime / response time / sessions |
 
-### Users
+### Admin Users (admin-portal team)
 | Method | Path | Notes |
 |--------|------|-------|
-| GET | `/users` | `page,limit,search,role,status,sortBy,sortOrder,dateFrom,dateTo` |
-| GET | `/users/:id` | + activity log, recent txns & bookings |
-| POST | `/users` | Admin+ |
-| PATCH | `/users/:id` | Editor+ |
-| PATCH | `/users/bulk` | Bulk `CHANGE_ROLE\|SUSPEND\|ACTIVATE` |
-| DELETE | `/users/:id` | Admin+ |
+| GET | `/admin-users` | `page,limit,search,role,status,sortBy,sortOrder,dateFrom,dateTo` |
+| GET | `/admin-users/:id` | Single admin |
+| POST | `/admin-users` | Admin+ |
+| PATCH | `/admin-users/:id` | Admin+ |
+| PATCH | `/admin-users/bulk` | Bulk `CHANGE_ROLE\|SUSPEND\|ACTIVATE` |
+| DELETE | `/admin-users/:id` | Super Admin |
+
+### Customers (website end-users)
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/customers` | `page,limit,search,status,sortBy,sortOrder,dateFrom,dateTo` |
+| GET | `/customers/:id` | + activity log, recent txns & bookings |
+| POST | `/customers` | Editor+ |
+| PATCH | `/customers/:id` | Editor+ |
+| PATCH | `/customers/bulk` | Bulk `SUSPEND\|ACTIVATE` |
+| DELETE | `/customers/:id` | Admin+ |
 
 ### Transactions
 | Method | Path | Notes |

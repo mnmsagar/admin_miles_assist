@@ -1,5 +1,8 @@
 // AdminHub — Prisma schema
-// Derived from Figma design analysis (docs/REQUIREMENTS_ANALYSIS.md)
+// Two distinct populations:
+//   - AdminUser : operators of the admin portal (authenticate here, have roles)
+//   - Customer  : end-users of the public website (subjects of transactions/bookings)
+// See docs/REQUIREMENTS_ANALYSIS.md
 
 generator client {
   provider = "prisma-client-js"
@@ -15,14 +18,14 @@ datasource db {
 
 // ─────────────────────────── Enums ───────────────────────────
 
-enum UserRole {
+enum AdminRole {
   SUPER_ADMIN
   ADMIN
   EDITOR
   VIEWER
 }
 
-enum UserStatus {
+enum AccountStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
@@ -75,27 +78,23 @@ enum AlertSeverity {
 
 // ─────────────────────────── Models ───────────────────────────
 
-model User {
-  id               String     @id @default(uuid())
-  displayId        String     @unique // e.g. USR-4821
+// Admin-portal operators. Authentication + RBAC live here.
+model AdminUser {
+  id               String        @id @default(uuid())
+  displayId        String        @unique // ADM-0001
   fullName         String
-  email            String     @unique
+  email            String        @unique
   passwordHash     String
   phone            String?
-  dateOfBirth      DateTime?  @db.Date
-  mailingAddress   String?
-  role             UserRole   @default(VIEWER)
-  status           UserStatus @default(ACTIVE)
+  role             AdminRole     @default(VIEWER)
+  status           AccountStatus @default(ACTIVE)
   avatarUrl        String?
-  twoFactorEnabled Boolean    @default(false)
-  joinedAt         DateTime   @default(now())
+  twoFactorEnabled Boolean       @default(false)
+  joinedAt         DateTime      @default(now())
   lastActiveAt     DateTime?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  transactions  Transaction[]
-  bookings      Booking[]
-  activityLogs  ActivityLog[]
   refreshTokens RefreshToken[]
 
   @@index([role])
@@ -103,14 +102,42 @@ model User {
   @@index([joinedAt])
   @@index([fullName])
   @@index([email])
-  @@map("users")
+  @@map("admin_users")
+}
+
+// Website end-users. Managed/viewed from the admin portal. No portal login here.
+model Customer {
+  id               String        @id @default(uuid())
+  displayId        String        @unique // USR-4821
+  fullName         String
+  email            String        @unique
+  phone            String?
+  dateOfBirth      DateTime?     @db.Date
+  mailingAddress   String?
+  status           AccountStatus @default(ACTIVE)
+  avatarUrl        String?
+  twoFactorEnabled Boolean       @default(false)
+  joinedAt         DateTime      @default(now())
+  lastActiveAt     DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  transactions Transaction[]
+  bookings     Booking[]
+  activityLogs ActivityLog[]
+
+  @@index([status])
+  @@index([joinedAt])
+  @@index([fullName])
+  @@index([email])
+  @@map("customers")
 }
 
 model Transaction {
   id            String            @id @default(uuid())
   displayId     String            @unique // TXN-1082
   reference     String?           @unique // REF-98342718
-  userId        String
+  customerId    String
   type          TransactionType
   amount        Decimal           @db.Decimal(12, 2)
   status        TransactionStatus @default(PENDING)
@@ -123,11 +150,11 @@ model Transaction {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  events  TransactionEvent[]
-  booking Booking?
+  customer Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  events   TransactionEvent[]
+  booking  Booking?
 
-  @@index([userId])
+  @@index([customerId])
   @@index([status])
   @@index([type])
   @@index([occurredAt])
@@ -138,7 +165,7 @@ model Transaction {
 model TransactionEvent {
   id            String   @id @default(uuid())
   transactionId String
-  label         String // "Completed & Disbursed"
+  label         String
   description   String?
   occurredAt    DateTime @default(now())
   createdAt     DateTime @default(now())
@@ -152,7 +179,7 @@ model TransactionEvent {
 model Booking {
   id              String        @id @default(uuid())
   displayId       String        @unique // BKG-2341
-  userId          String
+  customerId      String
   serviceType     ServiceType
   scheduledAt     DateTime
   durationMinutes Int           @default(60)
@@ -167,11 +194,11 @@ model Booking {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer    Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
   transaction Transaction?   @relation(fields: [transactionId], references: [id], onDelete: SetNull)
   events      BookingEvent[]
 
-  @@index([userId])
+  @@index([customerId])
   @@index([status])
   @@index([serviceType])
   @@index([scheduledAt])
@@ -182,7 +209,7 @@ model Booking {
 model BookingEvent {
   id          String   @id @default(uuid())
   bookingId   String
-  label       String // "Status Set to Confirmed"
+  label       String
   description String?
   occurredAt  DateTime @default(now())
   createdAt   DateTime @default(now())
@@ -195,22 +222,22 @@ model BookingEvent {
 
 model ActivityLog {
   id          String   @id @default(uuid())
-  userId      String
-  title       String // "Created booking #BKG-2341"
+  customerId  String
+  title       String
   description String?
   createdAt   DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([customerId])
   @@index([createdAt])
   @@map("activity_logs")
 }
 
 model Alert {
   id          String        @id @default(uuid())
-  title       String // "Server capacity at 92%"
-  description String? // "Scale resources"
+  title       String
+  description String?
   severity    AlertSeverity @default(INFO)
   isRead      Boolean       @default(false)
   createdAt   DateTime      @default(now())
@@ -220,30 +247,27 @@ model Alert {
   @@map("alerts")
 }
 
-// Rotating refresh tokens — opaque tokens stored as a SHA-256 hash so they
-// can be revoked server-side. One row per issued token (rotated on use).
+// Rotating refresh tokens for admin-portal sessions (SHA-256 hashed, revocable).
 model RefreshToken {
-  id        String    @id @default(uuid())
-  userId    String
-  tokenHash String    @unique
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
+  id          String    @id @default(uuid())
+  adminUserId String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([adminUserId])
   @@map("refresh_tokens")
 }
 
-// System telemetry snapshot (Uptime / Response time / Active sessions).
-// Seeded so dashboard health values come from PostgreSQL.
 model SystemHealthSnapshot {
-  id                 String   @id @default(uuid())
-  uptimePercent      Decimal  @db.Decimal(5, 2) // 99.80
-  avgResponseTimeMs  Int // 142
-  activeSessions     Int // 3241
-  capturedAt         DateTime @default(now())
+  id                String   @id @default(uuid())
+  uptimePercent     Decimal  @db.Decimal(5, 2)
+  avgResponseTimeMs Int
+  activeSessions    Int
+  capturedAt        DateTime @default(now())
 
   @@index([capturedAt])
   @@map("system_health_snapshots")

@@ -1,8 +1,8 @@
 import * as dotenv from 'dotenv';
 import {
   PrismaClient,
-  UserRole,
-  UserStatus,
+  AdminRole,
+  AccountStatus,
   TransactionType,
   TransactionStatus,
   BookingStatus,
@@ -37,23 +37,31 @@ function pad(prefix: string, n: number): string {
   return `${prefix}-${String(n).padStart(4, '0')}`;
 }
 
-// Users modelled on the Figma directory
-const USER_SEED = [
-  { fullName: 'Sarah Jenkins', email: 'sarah.j@example.com', role: UserRole.SUPER_ADMIN, status: UserStatus.ACTIVE },
-  { fullName: 'Jane Cooper', email: 'jane.c@example.com', role: UserRole.ADMIN, status: UserStatus.ACTIVE },
-  { fullName: 'Wade Warren', email: 'wade.w@example.com', role: UserRole.EDITOR, status: UserStatus.ACTIVE },
-  { fullName: 'Cameron Williamson', email: 'cameron.w@example.com', role: UserRole.VIEWER, status: UserStatus.INACTIVE },
-  { fullName: 'Arlene McCoy', email: 'arlene.m@example.com', role: UserRole.EDITOR, status: UserStatus.ACTIVE },
-  { fullName: 'Eleanor Pena', email: 'eleanor.p@example.com', role: UserRole.VIEWER, status: UserStatus.SUSPENDED },
-  { fullName: 'Kristin Watson', email: 'kristin.w@example.com', role: UserRole.ADMIN, status: UserStatus.ACTIVE },
-  { fullName: 'Robert Fox', email: 'robert.f@example.com', role: UserRole.VIEWER, status: UserStatus.ACTIVE },
-  { fullName: 'Leslie Alexander', email: 'leslie.a@example.com', role: UserRole.EDITOR, status: UserStatus.INACTIVE },
-  { fullName: 'Guy Hawkins', email: 'guy.h@example.com', role: UserRole.VIEWER, status: UserStatus.ACTIVE },
-  { fullName: 'Esther Howard', email: 'esther.h@example.com', role: UserRole.EDITOR, status: UserStatus.ACTIVE },
-  { fullName: 'Jenny Wilson', email: 'jenny.w@example.com', role: UserRole.VIEWER, status: UserStatus.ACTIVE },
-  { fullName: 'Kathryn Murphy', email: 'kathryn.m@example.com', role: UserRole.VIEWER, status: UserStatus.ACTIVE },
-  { fullName: 'Cody Fisher', email: 'cody.f@example.com', role: UserRole.EDITOR, status: UserStatus.ACTIVE },
-  { fullName: 'Albert Flores', email: 'albert.f@example.com', role: UserRole.VIEWER, status: UserStatus.ACTIVE },
+// Admin-portal operators (staff who log in and manage)
+const ADMIN_SEED = [
+  { fullName: 'Sarah Jenkins', email: 'sarah.j@adminhub.com', role: AdminRole.ADMIN },
+  { fullName: 'Wade Warren', email: 'wade.w@adminhub.com', role: AdminRole.EDITOR },
+  { fullName: 'Kristin Watson', email: 'kristin.w@adminhub.com', role: AdminRole.ADMIN },
+  { fullName: 'Cameron Williamson', email: 'cameron.w@adminhub.com', role: AdminRole.VIEWER },
+];
+
+// Website end-users (customers with transactions/bookings)
+const CUSTOMER_SEED = [
+  { fullName: 'Jane Cooper', email: 'jane.c@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Arlene McCoy', email: 'arlene.m@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Eleanor Pena', email: 'eleanor.p@example.com', status: AccountStatus.SUSPENDED },
+  { fullName: 'Robert Fox', email: 'robert.f@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Leslie Alexander', email: 'leslie.a@example.com', status: AccountStatus.INACTIVE },
+  { fullName: 'Guy Hawkins', email: 'guy.h@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Esther Howard', email: 'esther.h@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Jenny Wilson', email: 'jenny.w@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Kathryn Murphy', email: 'kathryn.m@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Cody Fisher', email: 'cody.f@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Albert Flores', email: 'albert.f@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Sarah Johnson', email: 'sarah.johnson@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Michael Brown', email: 'michael.b@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'Emily Davis', email: 'emily.d@example.com', status: AccountStatus.ACTIVE },
+  { fullName: 'David Wilson', email: 'david.w@example.com', status: AccountStatus.INACTIVE },
 ];
 
 const SERVICE_TYPES = Object.values(ServiceType);
@@ -76,60 +84,75 @@ async function main() {
   await prisma.transaction.deleteMany();
   await prisma.alert.deleteMany();
   await prisma.systemHealthSnapshot.deleteMany();
-  await prisma.user.deleteMany();
+  await prisma.refreshToken.deleteMany();
+  await prisma.customer.deleteMany();
+  await prisma.adminUser.deleteMany();
 
-  // ─── Admin ───
+  // ─── Admin users ───
   const adminHash = await bcrypt.hash(ADMIN_PASSWORD, SALT_ROUNDS);
-  const admin = await prisma.user.create({
+  const staffHash = await bcrypt.hash('Password@123', SALT_ROUNDS);
+
+  await prisma.adminUser.create({
     data: {
-      displayId: pad('USR', 1),
+      displayId: pad('ADM', 1),
       fullName: 'System Administrator',
       email: ADMIN_EMAIL,
       passwordHash: adminHash,
-      role: UserRole.SUPER_ADMIN,
-      status: UserStatus.ACTIVE,
+      role: AdminRole.SUPER_ADMIN,
+      status: AccountStatus.ACTIVE,
       phone: '+1 555-0100',
-      mailingAddress: 'HQ, New York, NY',
       twoFactorEnabled: true,
       joinedAt: new Date('2026-01-01'),
       lastActiveAt: new Date(),
     },
   });
 
-  // ─── Users ───
-  const commonHash = await bcrypt.hash('Password@123', SALT_ROUNDS);
-  const users = [admin];
-  for (let i = 0; i < USER_SEED.length; i++) {
-    const u = USER_SEED[i];
-    const joined = new Date(2026, randInt(0, 8), randInt(1, 28));
-    const user = await prisma.user.create({
+  for (let i = 0; i < ADMIN_SEED.length; i++) {
+    const a = ADMIN_SEED[i];
+    await prisma.adminUser.create({
       data: {
-        displayId: pad('USR', i + 2),
-        fullName: u.fullName,
-        email: u.email,
-        passwordHash: commonHash,
-        role: u.role,
-        status: u.status,
+        displayId: pad('ADM', i + 2),
+        fullName: a.fullName,
+        email: a.email,
+        passwordHash: staffHash,
+        role: a.role,
+        status: AccountStatus.ACTIVE,
+        twoFactorEnabled: Math.random() > 0.5,
+        joinedAt: new Date(2026, randInt(0, 5), randInt(1, 28)),
+        lastActiveAt: new Date(Date.now() - randInt(0, 5) * 86400000),
+      },
+    });
+  }
+
+  // ─── Customers ───
+  const customers = [];
+  for (let i = 0; i < CUSTOMER_SEED.length; i++) {
+    const c = CUSTOMER_SEED[i];
+    const customer = await prisma.customer.create({
+      data: {
+        displayId: pad('USR', i + 1000),
+        fullName: c.fullName,
+        email: c.email,
+        status: c.status,
         phone: `+1 555-${pad('', randInt(100, 999)).slice(1)}`,
         dateOfBirth: new Date(randInt(1985, 1998), randInt(0, 11), randInt(1, 28)),
         mailingAddress: `${randInt(1, 999)} Business Rd, New York, NY`,
         twoFactorEnabled: Math.random() > 0.5,
-        joinedAt: joined,
+        joinedAt: new Date(2026, randInt(0, 8), randInt(1, 28)),
         lastActiveAt: new Date(Date.now() - randInt(0, 7) * 86400000),
       },
     });
-    users.push(user);
+    customers.push(customer);
 
-    // Activity log per user
     await prisma.activityLog.createMany({
       data: [
-        { userId: user.id, title: `Logged in from new device`, description: 'MacOS Chrome, Brooklyn, NY' },
-        { userId: user.id, title: `Updated profile`, description: 'Refreshed account details' },
+        { customerId: customer.id, title: 'Created booking', description: 'Service reservation' },
+        { customerId: customer.id, title: 'Logged in from new device', description: 'MacOS Chrome, Brooklyn, NY' },
       ],
     });
   }
 
-  // ─── Transactions (spread across last 12 months for chart data) ───
+  // ─── Transactions (spread across 12 months for chart data) ───
   const txnStatuses = [
     TransactionStatus.COMPLETED,
     TransactionStatus.COMPLETED,
@@ -138,7 +161,6 @@ async function main() {
     TransactionStatus.FAILED,
     TransactionStatus.REFUNDED,
   ];
-  const customers = users.filter((u) => u.role !== UserRole.SUPER_ADMIN);
   let txnCounter = 1000;
   const now = new Date();
 
@@ -157,14 +179,14 @@ async function main() {
       const base = money(50, 2500);
       const amount = type === TransactionType.REFUND ? -base : base;
       const gatewayFee = money(1, 10);
-      const user = pick(customers);
+      const customer = pick(customers);
       txnCounter++;
 
       await prisma.transaction.create({
         data: {
           displayId: pad('TXN', txnCounter),
           reference: pad('REF', randInt(10000000, 99999999)),
-          userId: user.id,
+          customerId: customer.id,
           type,
           amount: new Prisma.Decimal(amount),
           status,
@@ -187,7 +209,7 @@ async function main() {
     }
   }
 
-  // ─── Bookings (spread around now) ───
+  // ─── Bookings ───
   const bookingStatuses = [
     BookingStatus.CONFIRMED,
     BookingStatus.COMPLETED,
@@ -199,14 +221,14 @@ async function main() {
   for (let i = 0; i < 40; i++) {
     const scheduledAt = new Date(now.getFullYear(), now.getMonth(), randInt(-20, 25), pick([9, 10, 11, 14, 15, 16]), pick([0, 30]));
     const status = pick(bookingStatuses);
-    const user = pick(customers);
+    const customer = pick(customers);
     const amount = money(90, 1200);
     bkgCounter++;
 
     await prisma.booking.create({
       data: {
         displayId: pad('BKG', bkgCounter),
-        userId: user.id,
+        customerId: customer.id,
         serviceType: pick(SERVICE_TYPES),
         scheduledAt,
         durationMinutes: pick(DURATIONS),
@@ -246,14 +268,16 @@ async function main() {
     },
   });
 
-  const [uCount, tCount, bCount] = await Promise.all([
-    prisma.user.count(),
+  const [aCount, cCount, tCount, bCount] = await Promise.all([
+    prisma.adminUser.count(),
+    prisma.customer.count(),
     prisma.transaction.count(),
     prisma.booking.count(),
   ]);
 
   console.log('✅ Seed complete');
-  console.log(`   Users:        ${uCount}`);
+  console.log(`   Admin users:  ${aCount}`);
+  console.log(`   Customers:    ${cCount}`);
   console.log(`   Transactions: ${tCount}`);
   console.log(`   Bookings:     ${bCount}`);
   console.log(`\n   Admin login → ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);

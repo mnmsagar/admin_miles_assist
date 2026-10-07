@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
+import { AdminRole } from '@prisma/client';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -10,25 +10,25 @@ import {
   ValidateIf,
 } from 'class-validator';
 
-export type BulkAction = 'CHANGE_ROLE' | 'SUSPEND' | 'ACTIVATE';
+export type AdminBulkAction = 'CHANGE_ROLE' | 'SUSPEND' | 'ACTIVATE';
 
-export class BulkUsersDto {
-  @ApiProperty({ type: [String], description: 'User IDs to act on' })
+export class BulkAdminUsersDto {
+  @ApiProperty({ type: [String], description: 'Admin user IDs to act on' })
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
-  userIds!: string[];
+  ids!: string[];
 
   @ApiProperty({ enum: ['CHANGE_ROLE', 'SUSPEND', 'ACTIVATE'] })
   @IsIn(['CHANGE_ROLE', 'SUSPEND', 'ACTIVATE'])
-  action!: BulkAction;
+  action!: AdminBulkAction;
 
   @ApiPropertyOptional({
-    enum: UserRole,
+    enum: AdminRole,
     description: 'Required when action = CHANGE_ROLE',
   })
   @ValidateIf((o) => o.action === 'CHANGE_ROLE')
-  @IsEnum(UserRole)
+  @IsEnum(AdminRole)
   @IsOptional()
-  role?: UserRole;
+  role?: AdminRole;
 }

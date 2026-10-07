@@ -9,9 +9,9 @@ import {
 } from 'class-validator';
 
 export class CreateTransactionDto {
-  @ApiProperty({ description: 'Owning user id' })
+  @ApiProperty({ description: 'Owning customer id' })
   @IsString()
-  userId!: string;
+  customerId!: string;
 
   @ApiProperty({ enum: TransactionType })
   @IsEnum(TransactionType)

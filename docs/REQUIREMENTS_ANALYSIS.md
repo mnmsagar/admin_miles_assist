@@ -4,6 +4,13 @@
 > Secondary reference: https://miles-flax.vercel.app/ (static frontend).
 > Assumptions are explicitly tagged **[ASSUMPTION]**.
 
+> **Revision (user model):** This API powers the **admin portal**; a separate
+> **customer portal/website** serves end-users. Accordingly the single `User`
+> entity below was split into two tables — **AdminUser** (portal operators who log
+> in, with roles) and **Customer** (website end-users who own transactions &
+> bookings). FKs point to `Customer`; auth/refresh tokens belong to `AdminUser`;
+> dashboard "Total Users" counts customers. See [ER_DIAGRAM.md](./ER_DIAGRAM.md).
+
 ---
 
 ## 1. Screens Inventory

@@ -1,26 +1,45 @@
 # AdminHub — ER / Data Model
 
+Two distinct populations:
+- **AdminUser** — operators of the admin portal (authenticate here, have roles).
+- **Customer** — end-users of the public website (subjects of transactions/bookings),
+  managed/viewed from the admin portal. No admin-portal login.
+
 ```mermaid
 erDiagram
-    USER ||--o{ TRANSACTION : "has"
-    USER ||--o{ BOOKING : "has"
-    USER ||--o{ ACTIVITY_LOG : "has"
+    CUSTOMER ||--o{ TRANSACTION : "has"
+    CUSTOMER ||--o{ BOOKING : "has"
+    CUSTOMER ||--o{ ACTIVITY_LOG : "has"
+    ADMIN_USER ||--o{ REFRESH_TOKEN : "has"
     TRANSACTION ||--o{ TRANSACTION_EVENT : "has"
     BOOKING ||--o{ BOOKING_EVENT : "has"
     BOOKING |o--|| TRANSACTION : "invoice (optional)"
 
-    USER {
+    ADMIN_USER {
         uuid id PK
-        string displayId UK "USR-0001"
+        string displayId UK "ADM-0001"
         string fullName
         string email UK
         string passwordHash
         string phone
-        date dateOfBirth
-        string mailingAddress
         enum role "SUPER_ADMIN|ADMIN|EDITOR|VIEWER"
         enum status "ACTIVE|INACTIVE|SUSPENDED"
-        string avatarUrl
+        bool twoFactorEnabled
+        datetime joinedAt
+        datetime lastActiveAt
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    CUSTOMER {
+        uuid id PK
+        string displayId UK "USR-4821"
+        string fullName
+        string email UK
+        string phone
+        date dateOfBirth
+        string mailingAddress
+        enum status "ACTIVE|INACTIVE|SUSPENDED"
         bool twoFactorEnabled
         datetime joinedAt
         datetime lastActiveAt
@@ -32,7 +51,7 @@ erDiagram
         uuid id PK
         string displayId UK "TXN-1082"
         string reference UK "REF-98342718"
-        uuid userId FK
+        uuid customerId FK
         enum type "PAYMENT|REFUND|TRANSFER"
         decimal amount "negative for refunds"
         enum status "PENDING|COMPLETED|FAILED|REFUNDED"
@@ -57,7 +76,7 @@ erDiagram
     BOOKING {
         uuid id PK
         string displayId UK "BKG-2341"
-        uuid userId FK
+        uuid customerId FK
         enum serviceType
         datetime scheduledAt
         int durationMinutes
@@ -83,9 +102,18 @@ erDiagram
 
     ACTIVITY_LOG {
         uuid id PK
-        uuid userId FK
+        uuid customerId FK
         string title
         string description
+        datetime createdAt
+    }
+
+    REFRESH_TOKEN {
+        uuid id PK
+        uuid adminUserId FK
+        string tokenHash UK
+        datetime expiresAt
+        datetime revokedAt
         datetime createdAt
     }
 
@@ -108,17 +136,23 @@ erDiagram
 ```
 
 ## Relationships
-- **User → Transaction** (1:N, cascade delete)
-- **User → Booking** (1:N, cascade delete)
-- **User → ActivityLog** (1:N, cascade delete)
-- **Transaction → TransactionEvent** (1:N, cascade delete)
-- **Booking → BookingEvent** (1:N, cascade delete)
-- **Booking → Transaction** (optional 1:1 invoice link, `SetNull` on delete)
-- **Alert**, **SystemHealthSnapshot** — standalone
+- **AdminUser → RefreshToken** (1:N, cascade) — only admins log into the portal.
+- **Customer → Transaction / Booking / ActivityLog** (1:N, cascade).
+- **Transaction → TransactionEvent**, **Booking → BookingEvent** (1:N, cascade).
+- **Booking → Transaction** (optional 1:1 invoice link, `SetNull`).
+- **Alert**, **SystemHealthSnapshot** — standalone.
+
+## Why two tables (AdminUser vs Customer)
+This API powers the **admin portal**; a separate **customer portal/website** serves
+end-users. The two populations are disjoint: admins authenticate and manage; customers
+transact and book. Splitting keeps FKs unambiguous (`transactions.customerId` always
+points to a `Customer`), isolates admin credentials from customer data, and lets the
+`Customer` table be reused by the future customer portal. Dashboard "Total Users" counts
+customers.
 
 ## Indexes
-Indexed columns match the UI's search / filter / sort needs:
-- `User`: role, status, joinedAt, fullName, email
-- `Transaction`: userId, status, type, occurredAt, amount
-- `Booking`: userId, status, serviceType, scheduledAt, paymentStatus
-- Event/log tables: foreign keys + createdAt
+- `AdminUser`: role, status, joinedAt, fullName, email
+- `Customer`: status, joinedAt, fullName, email
+- `Transaction`: customerId, status, type, occurredAt, amount
+- `Booking`: customerId, status, serviceType, scheduledAt, paymentStatus
+- Event/log/token tables: foreign keys + createdAt

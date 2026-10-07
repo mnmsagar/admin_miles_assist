@@ -3,10 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
-import { User } from '@prisma/client';
+import { AdminUser } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
-import { toUserDto } from '../users/users.mapper';
+import { toAdminUserDto } from '../admin-users/admin-users.mapper';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +17,7 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.adminUser.findUnique({
       where: { email: dto.email },
     });
 
@@ -28,13 +28,13 @@ export class AuthService {
       throw new UnauthorizedException('Account is suspended');
     }
 
-    await this.prisma.user.update({
+    await this.prisma.adminUser.update({
       where: { id: user.id },
       data: { lastActiveAt: new Date() },
     });
 
     const tokens = await this.issueTokens(user);
-    return { ...tokens, user: toUserDto(user) };
+    return { ...tokens, user: toAdminUserDto(user) };
   }
 
   /** Validate a refresh token, rotate it, and return a fresh token pair. */
@@ -42,14 +42,14 @@ export class AuthService {
     const tokenHash = this.hashToken(refreshToken);
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
-      include: { user: true },
+      include: { adminUser: true },
     });
 
     if (
       !stored ||
       stored.revokedAt ||
       stored.expiresAt < new Date() ||
-      stored.user.status === 'SUSPENDED'
+      stored.adminUser.status === 'SUSPENDED'
     ) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
@@ -60,8 +60,8 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
 
-    const tokens = await this.issueTokens(stored.user);
-    return { ...tokens, user: toUserDto(stored.user) };
+    const tokens = await this.issueTokens(stored.adminUser);
+    return { ...tokens, user: toAdminUserDto(stored.adminUser) };
   }
 
   /** Revoke a refresh token (idempotent). */
@@ -75,14 +75,14 @@ export class AuthService {
   }
 
   async me(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.adminUser.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
-    return toUserDto(user);
+    return toAdminUserDto(user);
   }
 
   // ─── helpers ───────────────────────────────────────────────
 
-  private async issueTokens(user: User) {
+  private async issueTokens(user: AdminUser) {
     const accessToken = await this.jwt.signAsync({
       sub: user.id,
       email: user.email,
@@ -95,7 +95,7 @@ export class AuthService {
 
     await this.prisma.refreshToken.create({
       data: {
-        userId: user.id,
+        adminUserId: user.id,
         tokenHash: this.hashToken(refreshToken),
         expiresAt,
       },

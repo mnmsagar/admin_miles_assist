@@ -7,11 +7,11 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { QueryUsersDto } from './dto/query-users.dto';
-import { BulkUsersDto } from './dto/bulk-users.dto';
-import { toUserDto } from './users.mapper';
+import { CreateAdminUserDto } from './dto/create-admin-user.dto';
+import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
+import { QueryAdminUsersDto } from './dto/query-admin-users.dto';
+import { BulkAdminUsersDto } from './dto/bulk-admin-users.dto';
+import { toAdminUserDto } from './admin-users.mapper';
 import {
   buildPage,
   resolveOrderBy,
@@ -22,7 +22,7 @@ import { nextDisplayId } from '../common/utils/display-id';
 const SORTABLE = ['fullName', 'email', 'role', 'status', 'joinedAt', 'lastActiveAt'];
 
 @Injectable()
-export class UsersService {
+export class AdminUsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -32,8 +32,8 @@ export class UsersService {
     return Number(this.config.get('BCRYPT_SALT_ROUNDS') ?? 10);
   }
 
-  async findAll(query: QueryUsersDto) {
-    const where: Prisma.UserWhereInput = {};
+  async findAll(query: QueryAdminUsersDto) {
+    const where: Prisma.AdminUserWhereInput = {};
 
     if (query.search) {
       where.OR = [
@@ -47,44 +47,29 @@ export class UsersService {
     const joined = dateRangeFilter(query.dateFrom, query.dateTo);
     if (joined) where.joinedAt = joined;
 
-    const orderBy = resolveOrderBy(
-      query.sortBy,
-      query.sortOrder,
-      SORTABLE,
-      'joinedAt',
-    );
+    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, SORTABLE, 'joinedAt');
 
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.user.findMany({
+      this.prisma.adminUser.findMany({
         where,
         orderBy,
         skip: query.skip,
         take: query.limit,
       }),
-      this.prisma.user.count({ where }),
+      this.prisma.adminUser.count({ where }),
     ]);
 
-    return buildPage(rows.map(toUserDto), total, query.page, query.limit);
+    return buildPage(rows.map(toAdminUserDto), total, query.page, query.limit);
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-      include: {
-        activityLogs: { orderBy: { createdAt: 'desc' }, take: 10 },
-        transactions: { orderBy: { occurredAt: 'desc' }, take: 5 },
-        bookings: { orderBy: { scheduledAt: 'desc' }, take: 5 },
-      },
-    });
-    if (!user) throw new NotFoundException(`User ${id} not found`);
-
-    const { passwordHash, ...safe } = user;
-    void passwordHash;
-    return safe;
+    const user = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException(`Admin user ${id} not found`);
+    return toAdminUserDto(user);
   }
 
-  async create(dto: CreateUserDto) {
-    const existing = await this.prisma.user.findUnique({
+  async create(dto: CreateAdminUserDto) {
+    const existing = await this.prisma.adminUser.findUnique({
       where: { email: dto.email },
     });
     if (existing) throw new ConflictException('Email already in use');
@@ -92,7 +77,7 @@ export class UsersService {
     const displayId = await this.generateDisplayId();
     const passwordHash = await bcrypt.hash(dto.password, this.saltRounds);
 
-    const user = await this.prisma.user.create({
+    const user = await this.prisma.adminUser.create({
       data: {
         displayId,
         fullName: dto.fullName,
@@ -101,35 +86,27 @@ export class UsersService {
         role: dto.role,
         status: dto.status,
         phone: dto.phone,
-        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
-        mailingAddress: dto.mailingAddress,
         avatarUrl: dto.avatarUrl,
         twoFactorEnabled: dto.twoFactorEnabled,
       },
     });
-    return toUserDto(user);
+    return toAdminUserDto(user);
   }
 
-  async update(id: string, dto: UpdateUserDto) {
+  async update(id: string, dto: UpdateAdminUserDto) {
     await this.ensureExists(id);
-    const user = await this.prisma.user.update({
-      where: { id },
-      data: {
-        ...dto,
-        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
-      },
-    });
-    return toUserDto(user);
+    const user = await this.prisma.adminUser.update({ where: { id }, data: { ...dto } });
+    return toAdminUserDto(user);
   }
 
   async remove(id: string) {
     await this.ensureExists(id);
-    await this.prisma.user.delete({ where: { id } });
+    await this.prisma.adminUser.delete({ where: { id } });
     return { id, deleted: true };
   }
 
-  async bulk(dto: BulkUsersDto) {
-    const data: Prisma.UserUpdateManyMutationInput = {};
+  async bulk(dto: BulkAdminUsersDto) {
+    const data: Prisma.AdminUserUpdateManyMutationInput = {};
     switch (dto.action) {
       case 'CHANGE_ROLE':
         data.role = dto.role;
@@ -141,23 +118,23 @@ export class UsersService {
         data.status = 'ACTIVE';
         break;
     }
-    const result = await this.prisma.user.updateMany({
-      where: { id: { in: dto.userIds } },
+    const result = await this.prisma.adminUser.updateMany({
+      where: { id: { in: dto.ids } },
       data,
     });
     return { updated: result.count, action: dto.action };
   }
 
   private async ensureExists(id: string) {
-    const count = await this.prisma.user.count({ where: { id } });
-    if (!count) throw new NotFoundException(`User ${id} not found`);
+    const count = await this.prisma.adminUser.count({ where: { id } });
+    if (!count) throw new NotFoundException(`Admin user ${id} not found`);
   }
 
   private async generateDisplayId(): Promise<string> {
-    const last = await this.prisma.user.findFirst({
+    const last = await this.prisma.adminUser.findFirst({
       orderBy: { displayId: 'desc' },
       select: { displayId: true },
     });
-    return nextDisplayId('USR', last ? [last.displayId] : []);
+    return nextDisplayId('ADM', last ? [last.displayId] : []);
   }
 }

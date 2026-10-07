@@ -56,9 +56,9 @@ export class DashboardService {
       pendingTxns,
       pendingTxnsLast,
     ] = await this.prisma.$transaction([
-      this.prisma.user.count(),
-      this.prisma.user.count({ where: { joinedAt: { gte: thisMonthStart } } }),
-      this.prisma.user.count({
+      this.prisma.customer.count(),
+      this.prisma.customer.count({ where: { joinedAt: { gte: thisMonthStart } } }),
+      this.prisma.customer.count({
         where: { joinedAt: { gte: lastMonthStart, lt: thisMonthStart } },
       }),
       this.prisma.transaction.aggregate({

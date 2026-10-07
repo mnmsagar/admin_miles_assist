@@ -1,7 +1,7 @@
 import { SetMetadata } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { AdminRole } from '@prisma/client';
 
 export const ROLES_KEY = 'roles';
 
-/** Restricts a route to the given roles (enforced by RolesGuard). */
-export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
+/** Restricts a route to the given admin roles (enforced by RolesGuard). */
+export const Roles = (...roles: AdminRole[]) => SetMetadata(ROLES_KEY, roles);
