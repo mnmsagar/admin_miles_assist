@@ -11,6 +11,7 @@ import {
 } from '../common/pagination/paginate';
 import { nextDisplayId, formatDisplayId } from '../common/utils/display-id';
 import { round2 } from '../common/utils/stats';
+import { toCsv } from '../common/utils/csv';
 
 const SORTABLE = ['occurredAt', 'amount', 'status', 'type', 'createdAt'];
 
@@ -45,7 +46,8 @@ export class TransactionsService {
     };
   }
 
-  async findAll(query: QueryTransactionsDto) {
+  /** Builds the shared filter used by both list and CSV export. */
+  private buildWhere(query: QueryTransactionsDto): Prisma.TransactionWhereInput {
     const where: Prisma.TransactionWhereInput = {};
 
     if (query.search) {
@@ -68,6 +70,11 @@ export class TransactionsService {
     const occurred = dateRangeFilter(query.dateFrom, query.dateTo);
     if (occurred) where.occurredAt = occurred;
 
+    return where;
+  }
+
+  async findAll(query: QueryTransactionsDto) {
+    const where = this.buildWhere(query);
     const orderBy = resolveOrderBy(
       query.sortBy,
       query.sortOrder,
@@ -91,6 +98,50 @@ export class TransactionsService {
     ]);
 
     return buildPage(data, total, query.page, query.limit);
+  }
+
+  /** Export all matching transactions (ignores pagination) as a CSV string. */
+  async exportCsv(query: QueryTransactionsDto): Promise<string> {
+    const where = this.buildWhere(query);
+    const orderBy = resolveOrderBy(
+      query.sortBy,
+      query.sortOrder,
+      SORTABLE,
+      'occurredAt',
+    );
+
+    const rows = await this.prisma.transaction.findMany({
+      where,
+      orderBy,
+      include: {
+        user: { select: { fullName: true, email: true, displayId: true } },
+      },
+    });
+
+    const headers = [
+      'Transaction ID',
+      'Reference',
+      'User',
+      'Email',
+      'Type',
+      'Amount',
+      'Status',
+      'Payment Method',
+      'Date & Time',
+    ];
+    const data = rows.map((t) => [
+      t.displayId,
+      t.reference ?? '',
+      t.user.fullName,
+      t.user.email,
+      t.type,
+      Number(t.amount).toFixed(2),
+      t.status,
+      t.paymentMethod ?? '',
+      t.occurredAt.toISOString(),
+    ]);
+
+    return toCsv(headers, data);
   }
 
   async findOne(id: string) {

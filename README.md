@@ -152,6 +152,7 @@ revoked), and can be revoked via logout.
 |--------|------|-------|
 | GET | `/transactions` | `search,type,status,amountMin,amountMax,dateFrom,dateTo,sort*` |
 | GET | `/transactions/stats` | Stat cards: total, volume, avg, success rate |
+| GET | `/transactions/export` | CSV download of matching rows (same filters) |
 | GET | `/transactions/:id` | + events + related ledger |
 | POST | `/transactions` | Editor+ |
 | PATCH | `/transactions/:id/status` | Editor+ |
