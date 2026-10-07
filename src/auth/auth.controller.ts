@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -19,6 +20,23 @@ export class AuthController {
   @ApiOperation({ summary: 'Authenticate and receive a JWT access token' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Public()
+  @Post('refresh')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Rotate a refresh token for a new access/refresh pair' })
+  refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refresh(dto.refreshToken);
+  }
+
+  @Public()
+  @Post('logout')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Revoke a refresh token' })
+  logout(@Body() dto: RefreshTokenDto) {
+    return this.authService.logout(dto.refreshToken);
   }
 
   @Get('me')

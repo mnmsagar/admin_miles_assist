@@ -96,8 +96,15 @@ All routes are prefixed with `/api`. All routes except `POST /auth/login` requir
 ### Auth
 | Method | Path | Notes |
 |--------|------|-------|
-| POST | `/auth/login` | Public, rate-limited (5/min) |
+| POST | `/auth/login` | Public, rate-limited (5/min) → `{ accessToken, refreshToken, user }` |
+| POST | `/auth/refresh` | Public → rotates refresh token, returns a new pair |
+| POST | `/auth/logout` | Public → revokes a refresh token |
 | GET | `/auth/me` | Current user |
+
+**Token strategy:** short-lived JWT **access token** (`JWT_EXPIRES_IN`, default `15m`)
++ long-lived opaque **refresh token** (`REFRESH_TOKEN_EXPIRES_IN_DAYS`, default `7`).
+Refresh tokens are stored as SHA-256 hashes, **rotated on every use** (the old one is
+revoked), and can be revoked via logout.
 
 ### Dashboard
 | Method | Path | Notes |
@@ -175,5 +182,7 @@ All routes are prefixed with `/api`. All routes except `POST /auth/login` requir
 - Dashboard statistics & chart series are **computed in the backend**, never by the client.
 - Passwords hashed with bcrypt; password hashes never leave the service layer.
 - JWT guard applied globally (`@Public()` opts out); `@Roles()` for RBAC.
+- Short access tokens + rotating, revocable refresh tokens (SHA-256 hashed at rest).
+- Swagger UI is disabled when `NODE_ENV=production` (override with `SWAGGER_ENABLED=true`).
 
 See [docs/REQUIREMENTS_ANALYSIS.md](docs/REQUIREMENTS_ANALYSIS.md) and [docs/ER_DIAGRAM.md](docs/ER_DIAGRAM.md).

@@ -90,9 +90,10 @@ model User {
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
-  transactions Transaction[]
-  bookings     Booking[]
-  activityLogs ActivityLog[]
+  transactions  Transaction[]
+  bookings      Booking[]
+  activityLogs  ActivityLog[]
+  refreshTokens RefreshToken[]
 
   @@index([role])
   @@index([status])
@@ -214,6 +215,22 @@ model Alert {
   @@index([severity])
   @@index([createdAt])
   @@map("alerts")
+}
+
+// Rotating refresh tokens — opaque tokens stored as a SHA-256 hash so they
+// can be revoked server-side. One row per issued token (rotated on use).
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }
 
 // System telemetry snapshot (Uptime / Response time / Active sessions).

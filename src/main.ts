@@ -31,21 +31,28 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseInterceptor());
 
-  // Swagger / OpenAPI
-  const config = new DocumentBuilder()
-    .setTitle('AdminHub API')
-    .setDescription(
-      'Backend REST API for the AdminHub admin console (Users, Transactions, Bookings, Dashboard).',
-    )
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
+  // Swagger / OpenAPI — gated: off in production unless explicitly enabled.
+  const swaggerEnabled =
+    process.env.SWAGGER_ENABLED === 'true' ||
+    process.env.NODE_ENV !== 'production';
+  if (swaggerEnabled) {
+    const config = new DocumentBuilder()
+      .setTitle('AdminHub API')
+      .setDescription(
+        'Backend REST API for the AdminHub admin console (Users, Transactions, Bookings, Dashboard).',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
+  }
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
   logger.log(`🚀 AdminHub API running on http://localhost:${port}/${apiPrefix}`);
-  logger.log(`📚 Swagger docs at http://localhost:${port}/${apiPrefix}/docs`);
+  if (swaggerEnabled) {
+    logger.log(`📚 Swagger docs at http://localhost:${port}/${apiPrefix}/docs`);
+  }
 }
 bootstrap();
