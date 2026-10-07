@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Patch, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { ChartQueryDto } from './dto/chart-query.dto';
@@ -35,9 +35,15 @@ export class DashboardController {
   }
 
   @Get('alerts')
-  @ApiOperation({ summary: 'System alerts' })
+  @ApiOperation({ summary: 'System alerts / notifications (+ unread count)' })
   getAlerts() {
     return this.dashboardService.getAlerts();
+  }
+
+  @Patch('alerts/read')
+  @ApiOperation({ summary: 'Mark all alerts as read' })
+  markAlertsRead() {
+    return this.dashboardService.markAlertsRead();
   }
 
   @Get('health')

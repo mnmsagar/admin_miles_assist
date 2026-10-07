@@ -159,13 +159,22 @@ export class DashboardService {
     return { range: `${months}M`, series: points };
   }
 
-  /** System alerts for the dashboard. */
+  /** System alerts / notifications for the dashboard, with unread count. */
   async getAlerts() {
-    const alerts = await this.prisma.alert.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 10,
+    const [data, unreadCount] = await this.prisma.$transaction([
+      this.prisma.alert.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
+      this.prisma.alert.count({ where: { isRead: false } }),
+    ]);
+    return { data, unreadCount };
+  }
+
+  /** Mark all unread alerts as read. */
+  async markAlertsRead() {
+    const res = await this.prisma.alert.updateMany({
+      where: { isRead: false },
+      data: { isRead: true },
     });
-    return { data: alerts };
+    return { updated: res.count };
   }
 
   /** Latest system-health snapshot (seeded telemetry). */

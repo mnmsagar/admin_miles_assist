@@ -4,13 +4,13 @@ import {
   Users,
   ArrowLeftRight,
   CalendarDays,
-  Bell,
   Search,
   LogOut,
   Cpu,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Avatar } from './ui';
+import { NotificationBell } from './NotificationBell';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutGrid, end: true },
@@ -97,12 +97,9 @@ export function Layout() {
               disabled
             />
           </div>
-          <button className="relative ml-auto flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 md:ml-0">
-            <Bell className="size-5" />
-            <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
-              3
-            </span>
-          </button>
+          <div className="ml-auto md:ml-0">
+            <NotificationBell />
+          </div>
           <div className="md:hidden">
             <Avatar name={user?.fullName ?? 'A'} size={32} />
           </div>

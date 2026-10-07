@@ -84,7 +84,9 @@ built from the Figma design and wired to this API.
 - **Design system:** Figma tokens (Indigo primary, Slate neutrals, Inter, semantic colors)
 - **Features:** JWT login with silent token refresh, protected routes, Dashboard (KPIs,
   revenue chart, alerts, health), Users / Transactions / Bookings lists (search, filters,
-  pagination, CSV export) and detail views, responsive sidebar (desktop) + bottom-nav (mobile)
+  pagination, CSV export) and detail views, create/edit/refund/cancel actions,
+  notifications bell (unread badge + mark-as-read), responsive sidebar (desktop) +
+  bottom-nav (mobile)
 
 ```bash
 cd frontend
@@ -95,9 +97,13 @@ npm run dev              # http://localhost:5173
 Make sure the backend is running first. Log in with the demo admin below.
 
 ## Test Admin Credentials
-| Email | Password |
-|-------|----------|
-| `admin@adminhub.com` | `Admin@12345` |
+| Role | Email | Password |
+|------|-------|----------|
+| Super Admin | `admin@adminhub.com` | `Admin@12345` |
+| Admin | `sarah.j@adminhub.com` | `Password@123` |
+| Editor | `wade.w@adminhub.com` | `Password@123` |
+| Admin | `kristin.w@adminhub.com` | `Password@123` |
+| Viewer | `cameron.w@adminhub.com` | `Password@123` |
 
 Other seeded users log in with password `Password@123`.
 
@@ -138,7 +144,8 @@ revoked), and can be revoked via logout.
 | GET | `/dashboard?tab=overview\|analytics\|reports\|settings` | Tab-driven (default `overview`) |
 | GET | `/dashboard/stats` | 4 KPIs + % change vs last month |
 | GET | `/dashboard/charts?range=6M` | `7D\|1M\|3M\|6M\|1Y` |
-| GET | `/dashboard/alerts` | System alerts |
+| GET | `/dashboard/alerts` | System alerts / notifications (+ `unreadCount`) |
+| PATCH | `/dashboard/alerts/read` | Mark all alerts as read |
 | GET | `/dashboard/health` | Uptime / response time / sessions |
 
 > Tabs (all data from PostgreSQL):
