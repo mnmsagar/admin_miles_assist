@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     TransactionsModule,
     BookingsModule,
     DashboardModule,
+    HealthModule,
   ],
   providers: [
     {

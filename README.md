@@ -84,6 +84,15 @@ Other seeded users log in with password `Password@123`.
 All routes are prefixed with `/api`. All routes except `POST /auth/login` require
 `Authorization: Bearer <token>`.
 
+### Health
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/health` | Public liveness/readiness — pings PostgreSQL |
+
+```json
+{ "status": "ok", "database": "up", "uptime": 94, "timestamp": "2026-10-07T05:12:18.713Z" }
+```
+
 ### Auth
 | Method | Path | Notes |
 |--------|------|-------|
