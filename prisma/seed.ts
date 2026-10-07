@@ -1,3 +1,4 @@
+import * as dotenv from 'dotenv';
 import {
   PrismaClient,
   UserRole,
@@ -11,8 +12,13 @@ import {
   Prisma,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { buildDatabaseUrl } from '../src/config/build-database-url';
 
-const prisma = new PrismaClient();
+dotenv.config();
+
+const prisma = new PrismaClient({
+  datasources: { db: { url: buildDatabaseUrl() } },
+});
 
 const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS ?? 10);
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? 'admin@adminhub.com';

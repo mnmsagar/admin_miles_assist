@@ -7,6 +7,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // Prisma CLI requires a URL here. It is composed from the DB_* vars by
+  // scripts/with-db-url.ts (see package.json prisma:* scripts), so DATABASE_URL
+  // is never stored in .env. The app builds the same URL in PrismaService.
   url      = env("DATABASE_URL")
 }
 
