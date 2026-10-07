@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChartQueryDto, ChartRange } from './dto/chart-query.dto';
+import { DashboardQueryDto } from './dto/dashboard-query.dto';
 import { pctChange, startOfMonth } from '../common/utils/stats';
 
 @Injectable()
@@ -180,5 +181,105 @@ export class DashboardService {
         capturedAt: new Date(),
       }
     );
+  }
+
+  /**
+   * Single entry point driven by the `tab` query param.
+   * - overview  → the existing KPI/chart/alert/health bundle
+   * - analytics → DB-computed breakdowns & trends
+   */
+  async getTab(query: DashboardQueryDto) {
+    if (query.tab === 'analytics') {
+      return { tab: 'analytics', ...(await this.getAnalytics()) };
+    }
+    const [stats, charts, alerts, health] = await Promise.all([
+      this.getStats(),
+      this.getCharts({ range: query.range } as ChartQueryDto),
+      this.getAlerts(),
+      this.getHealth(),
+    ]);
+    return { tab: 'overview', stats, charts, alerts, health };
+  }
+
+  /** Analytics tab — all figures computed from PostgreSQL via groupBy. */
+  async getAnalytics() {
+    const [
+      txnByStatus,
+      txnByType,
+      totalTxns,
+      completedTxns,
+      bookingByStatus,
+      bookingByService,
+      usersByRole,
+      topSpenders,
+    ] = await Promise.all([
+      this.prisma.transaction.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      this.prisma.transaction.groupBy({
+        by: ['type'],
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
+      this.prisma.transaction.count(),
+      this.prisma.transaction.count({ where: { status: 'COMPLETED' } }),
+      this.prisma.booking.groupBy({ by: ['status'], _count: { _all: true } }),
+      this.prisma.booking.groupBy({
+        by: ['serviceType'],
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
+      this.prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
+      this.prisma.transaction.groupBy({
+        by: ['userId'],
+        where: { type: 'PAYMENT', status: 'COMPLETED' },
+        _sum: { amount: true },
+        orderBy: { _sum: { amount: 'desc' } },
+        take: 5,
+      }),
+    ]);
+
+    // Resolve top-spender user details
+    const spenderUsers = await this.prisma.user.findMany({
+      where: { id: { in: topSpenders.map((t) => t.userId) } },
+      select: { id: true, fullName: true, email: true, displayId: true },
+    });
+    const userMap = new Map(spenderUsers.map((u) => [u.id, u]));
+
+    const num = (v: Prisma.Decimal | null) => (v ? Number(v) : 0);
+    const conversionRate =
+      totalTxns > 0 ? Math.round((completedTxns / totalTxns) * 1000) / 10 : 0;
+
+    return {
+      conversionRate, // completed / total transactions, %
+      transactionsByStatus: txnByStatus.map((r) => ({
+        status: r.status,
+        count: r._count._all,
+      })),
+      transactionsByType: txnByType.map((r) => ({
+        type: r.type,
+        count: r._count._all,
+        volume: num(r._sum.amount),
+      })),
+      bookingsByStatus: bookingByStatus.map((r) => ({
+        status: r.status,
+        count: r._count._all,
+      })),
+      bookingsByServiceType: bookingByService.map((r) => ({
+        serviceType: r.serviceType,
+        count: r._count._all,
+        revenue: num(r._sum.amount),
+      })),
+      usersByRole: usersByRole.map((r) => ({
+        role: r.role,
+        count: r._count._all,
+      })),
+      topUsers: topSpenders.map((t) => ({
+        user: userMap.get(t.userId) ?? null,
+        totalSpend: num(t._sum.amount),
+      })),
+      revenueTrend: await this.monthlyRevenue(new Date(), 6),
+    };
   }
 }

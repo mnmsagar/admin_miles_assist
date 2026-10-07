@@ -117,10 +117,16 @@ revoked), and can be revoked via logout.
 ### Dashboard
 | Method | Path | Notes |
 |--------|------|-------|
+| GET | `/dashboard?tab=overview\|analytics` | Tab-driven: `overview` bundles stats+charts+alerts+health; `analytics` returns DB-computed breakdowns |
 | GET | `/dashboard/stats` | 4 KPIs + % change vs last month |
 | GET | `/dashboard/charts?range=6M` | `7D\|1M\|3M\|6M\|1Y` |
 | GET | `/dashboard/alerts` | System alerts |
 | GET | `/dashboard/health` | Uptime / response time / sessions |
+
+> `?tab=analytics` computes (from PostgreSQL): transactions by status/type (with
+> volume), bookings by status/service type, users by role, conversion rate, top
+> users by spend, and a 6-month revenue trend. Overview/analytics are the designed
+> tabs; Reports/Settings have no Figma content and return `400`.
 
 ### Admin Users (admin-portal team)
 | Method | Path | Notes |
