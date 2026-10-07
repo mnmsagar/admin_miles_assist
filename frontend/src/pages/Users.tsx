@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Plus, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Plus, Loader2, Pencil, Trash2, Eye } from 'lucide-react';
 import { useApi } from '../lib/useApi';
 import { api } from '../lib/api';
 import {
@@ -14,8 +14,10 @@ import {
   PageHeader,
   Modal,
   Field,
+  ConfirmDialog,
 } from '../components/ui';
 import { AddUserModal } from '../components/AddUserModal';
+import { EditUserModal } from '../components/EditUserModal';
 import { num, date, relative } from '../lib/format';
 import type { Paginated, User } from '../lib/types';
 
@@ -32,7 +34,10 @@ export default function Users() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
+  const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState<User | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [roleOpen, setRoleOpen] = useState(false);
   const [newRole, setNewRole] = useState('VIEWER');
@@ -66,9 +71,21 @@ export default function Users() {
     setSelected(allSelected ? new Set() : new Set(ids));
   }
 
-  function afterCreate() {
+  function afterChange() {
     reload();
     reloadStats();
+  }
+
+  async function doDelete() {
+    if (!deleting) return;
+    setBusy(true);
+    try {
+      await api.del(`/users/${deleting.id}`);
+      setDeleting(null);
+      afterChange();
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function bulk(action: 'SUSPEND' | 'ACTIVATE' | 'CHANGE_ROLE', r?: string) {
@@ -103,7 +120,28 @@ export default function Users() {
       <AddUserModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onCreated={afterCreate}
+        onCreated={afterChange}
+      />
+
+      {editing && (
+        <EditUserModal
+          key={editing.id}
+          user={editing}
+          open
+          onClose={() => setEditing(null)}
+          onSaved={afterChange}
+        />
+      )}
+
+      <ConfirmDialog
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={doDelete}
+        title="Delete User"
+        message={`Delete ${deleting?.fullName}? This permanently removes the user and their transactions, bookings and activity.`}
+        confirmLabel="Delete"
+        danger
+        busy={busy}
       />
 
       <Modal
@@ -247,6 +285,7 @@ export default function Users() {
                     <th className="px-3 py-3">Status</th>
                     <th className="px-3 py-3">Join Date</th>
                     <th className="px-3 py-3">Last Active</th>
+                    <th className="px-3 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -293,6 +332,31 @@ export default function Users() {
                       <td className="px-3 py-3 text-slate-500">{date(u.joinedAt)}</td>
                       <td className="px-3 py-3 text-slate-500">
                         {relative(u.lastActiveAt)}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            title="View"
+                            onClick={() => navigate(`/users/${u.id}`)}
+                            className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            <Eye className="size-4" />
+                          </button>
+                          <button
+                            title="Edit"
+                            onClick={() => setEditing(u)}
+                            className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            title="Delete"
+                            onClick={() => setDeleting(u)}
+                            className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-error-light hover:text-red-600"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

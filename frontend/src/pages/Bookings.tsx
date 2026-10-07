@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Eye } from 'lucide-react';
 import { useApi } from '../lib/useApi';
 import {
   StatCard,
@@ -161,6 +161,7 @@ export default function Bookings() {
                     <th className="px-3 py-3">Duration</th>
                     <th className="px-3 py-3">Status</th>
                     <th className="px-3 py-3">Amount</th>
+                    <th className="px-3 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -192,6 +193,17 @@ export default function Bookings() {
                       </td>
                       <td className="px-3 py-3 font-semibold text-slate-900">
                         {money(b.amount)}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex justify-end">
+                          <Link
+                            to={`/bookings/${b.id}`}
+                            title="View"
+                            className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+                          >
+                            <Eye className="size-4" />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}

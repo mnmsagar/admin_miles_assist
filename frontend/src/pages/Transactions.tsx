@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Download } from 'lucide-react';
+import { Search, Download, Eye } from 'lucide-react';
 import { useApi } from '../lib/useApi';
 import { api } from '../lib/api';
 import {
@@ -125,6 +125,7 @@ export default function Transactions() {
                     <th className="px-3 py-3">Amount</th>
                     <th className="px-3 py-3">Status</th>
                     <th className="px-3 py-3">Date &amp; Time</th>
+                    <th className="px-3 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -157,6 +158,17 @@ export default function Transactions() {
                       </td>
                       <td className="px-3 py-3 text-slate-500">
                         {date(t.occurredAt, true)}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex justify-end">
+                          <Link
+                            to={`/transactions/${t.id}`}
+                            title="View"
+                            className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+                          >
+                            <Eye className="size-4" />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}
