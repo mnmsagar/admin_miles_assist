@@ -188,17 +188,95 @@ export class DashboardService {
    * - overview  → the existing KPI/chart/alert/health bundle
    * - analytics → DB-computed breakdowns & trends
    */
-  async getTab(query: DashboardQueryDto) {
-    if (query.tab === 'analytics') {
-      return { tab: 'analytics', ...(await this.getAnalytics()) };
+  async getTab(query: DashboardQueryDto, adminUserId?: string) {
+    switch (query.tab) {
+      case 'analytics':
+        return { tab: 'analytics', ...(await this.getAnalytics()) };
+      case 'reports':
+        return { tab: 'reports', ...(await this.getReports()) };
+      case 'settings':
+        return { tab: 'settings', ...(await this.getSettings(adminUserId)) };
+      default: {
+        const [stats, charts, alerts, health] = await Promise.all([
+          this.getStats(),
+          this.getCharts({ range: query.range } as ChartQueryDto),
+          this.getAlerts(),
+          this.getHealth(),
+        ]);
+        return { tab: 'overview', stats, charts, alerts, health };
+      }
     }
-    const [stats, charts, alerts, health] = await Promise.all([
-      this.getStats(),
-      this.getCharts({ range: query.range } as ChartQueryDto),
-      this.getAlerts(),
-      this.getHealth(),
+  }
+
+  /** Reports tab — available reports with live record counts + export links. */
+  async getReports() {
+    const [transactions, bookings, users, revenueAgg] = await Promise.all([
+      this.prisma.transaction.count(),
+      this.prisma.booking.count(),
+      this.prisma.user.count(),
+      this.prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { type: 'PAYMENT', status: 'COMPLETED' },
+      }),
     ]);
-    return { tab: 'overview', stats, charts, alerts, health };
+
+    return {
+      generatedAt: new Date().toISOString(),
+      reports: [
+        {
+          key: 'transactions',
+          title: 'Transactions Report',
+          records: transactions,
+          exportUrl: '/api/transactions/export',
+        },
+        {
+          key: 'bookings',
+          title: 'Bookings Report',
+          records: bookings,
+          exportUrl: null,
+        },
+        {
+          key: 'users',
+          title: 'Users Report',
+          records: users,
+          exportUrl: null,
+        },
+        {
+          key: 'revenue',
+          title: 'Revenue Report',
+          totalRevenue: revenueAgg._sum.amount ? Number(revenueAgg._sum.amount) : 0,
+          exportUrl: null,
+        },
+      ],
+    };
+  }
+
+  /** Settings tab — the current admin's account/security + app configuration. */
+  async getSettings(adminUserId?: string) {
+    const account = adminUserId
+      ? await this.prisma.adminUser.findUnique({
+          where: { id: adminUserId },
+          select: {
+            id: true,
+            displayId: true,
+            fullName: true,
+            email: true,
+            role: true,
+            status: true,
+            twoFactorEnabled: true,
+            lastActiveAt: true,
+          },
+        })
+      : null;
+
+    return {
+      account,
+      application: {
+        name: 'AdminHub',
+        environment: process.env.NODE_ENV ?? 'development',
+        apiPrefix: process.env.API_PREFIX ?? 'api',
+      },
+    };
   }
 
   /** Analytics tab — all figures computed from PostgreSQL via groupBy. */

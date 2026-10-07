@@ -2,16 +2,18 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional } from 'class-validator';
 import { ChartRange } from './chart-query.dto';
 
-export type DashboardTab = 'overview' | 'analytics';
+export type DashboardTab = 'overview' | 'analytics' | 'reports' | 'settings';
+
+const TABS: DashboardTab[] = ['overview', 'analytics', 'reports', 'settings'];
 
 export class DashboardQueryDto {
   @ApiPropertyOptional({
-    enum: ['overview', 'analytics'],
+    enum: TABS,
     default: 'overview',
     description: 'Which dashboard tab to load',
   })
   @IsOptional()
-  @IsIn(['overview', 'analytics'])
+  @IsIn(TABS)
   tab: DashboardTab = 'overview';
 
   @ApiPropertyOptional({

@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { ChartQueryDto } from './dto/chart-query.dto';
 import { DashboardQueryDto } from './dto/dashboard-query.dto';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
@@ -11,9 +12,14 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Dashboard data by tab (?tab=overview|analytics)' })
-  getTab(@Query() query: DashboardQueryDto) {
-    return this.dashboardService.getTab(query);
+  @ApiOperation({
+    summary: 'Dashboard data by tab (?tab=overview|analytics|reports|settings)',
+  })
+  getTab(
+    @Query() query: DashboardQueryDto,
+    @CurrentUser('id') adminUserId: string,
+  ) {
+    return this.dashboardService.getTab(query, adminUserId);
   }
 
   @Get('stats')

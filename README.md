@@ -117,16 +117,21 @@ revoked), and can be revoked via logout.
 ### Dashboard
 | Method | Path | Notes |
 |--------|------|-------|
-| GET | `/dashboard?tab=overview\|analytics` | Tab-driven: `overview` bundles stats+charts+alerts+health; `analytics` returns DB-computed breakdowns |
+| GET | `/dashboard?tab=overview\|analytics\|reports\|settings` | Tab-driven (default `overview`) |
 | GET | `/dashboard/stats` | 4 KPIs + % change vs last month |
 | GET | `/dashboard/charts?range=6M` | `7D\|1M\|3M\|6M\|1Y` |
 | GET | `/dashboard/alerts` | System alerts |
 | GET | `/dashboard/health` | Uptime / response time / sessions |
 
-> `?tab=analytics` computes (from PostgreSQL): transactions by status/type (with
-> volume), bookings by status/service type, users by role, conversion rate, top
-> users by spend, and a 6-month revenue trend. Overview/analytics are the designed
-> tabs; Reports/Settings have no Figma content and return `400`.
+> Tabs (all data from PostgreSQL):
+> - **overview** — stats + charts + alerts + health
+> - **analytics** — transactions by status/type (with volume), bookings by
+>   status/service type, users by role, conversion rate, top users by spend, 6-month revenue trend
+> - **reports** — available reports with live record counts + export links
+> - **settings** — current admin account/security + app configuration
+>
+> Only Overview is designed in Figma; the rest are tab labels in the design, backed
+> here with real data. Unknown tab values return `400`.
 
 ### Admin Users (admin-portal team)
 | Method | Path | Notes |
