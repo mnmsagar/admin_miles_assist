@@ -1,0 +1,263 @@
+import {
+  PrismaClient,
+  UserRole,
+  UserStatus,
+  TransactionType,
+  TransactionStatus,
+  BookingStatus,
+  PaymentStatus,
+  ServiceType,
+  AlertSeverity,
+  Prisma,
+} from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+
+const prisma = new PrismaClient();
+
+const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS ?? 10);
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? 'admin@adminhub.com';
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'Admin@12345';
+
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+function randInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function money(min: number, max: number): number {
+  return Math.round((Math.random() * (max - min) + min) * 100) / 100;
+}
+function pad(prefix: string, n: number): string {
+  return `${prefix}-${String(n).padStart(4, '0')}`;
+}
+
+// Users modelled on the Figma directory
+const USER_SEED = [
+  { fullName: 'Sarah Jenkins', email: 'sarah.j@example.com', role: UserRole.SUPER_ADMIN, status: UserStatus.ACTIVE },
+  { fullName: 'Jane Cooper', email: 'jane.c@example.com', role: UserRole.ADMIN, status: UserStatus.ACTIVE },
+  { fullName: 'Wade Warren', email: 'wade.w@example.com', role: UserRole.EDITOR, status: UserStatus.ACTIVE },
+  { fullName: 'Cameron Williamson', email: 'cameron.w@example.com', role: UserRole.VIEWER, status: UserStatus.INACTIVE },
+  { fullName: 'Arlene McCoy', email: 'arlene.m@example.com', role: UserRole.EDITOR, status: UserStatus.ACTIVE },
+  { fullName: 'Eleanor Pena', email: 'eleanor.p@example.com', role: UserRole.VIEWER, status: UserStatus.SUSPENDED },
+  { fullName: 'Kristin Watson', email: 'kristin.w@example.com', role: UserRole.ADMIN, status: UserStatus.ACTIVE },
+  { fullName: 'Robert Fox', email: 'robert.f@example.com', role: UserRole.VIEWER, status: UserStatus.ACTIVE },
+  { fullName: 'Leslie Alexander', email: 'leslie.a@example.com', role: UserRole.EDITOR, status: UserStatus.INACTIVE },
+  { fullName: 'Guy Hawkins', email: 'guy.h@example.com', role: UserRole.VIEWER, status: UserStatus.ACTIVE },
+  { fullName: 'Esther Howard', email: 'esther.h@example.com', role: UserRole.EDITOR, status: UserStatus.ACTIVE },
+  { fullName: 'Jenny Wilson', email: 'jenny.w@example.com', role: UserRole.VIEWER, status: UserStatus.ACTIVE },
+  { fullName: 'Kathryn Murphy', email: 'kathryn.m@example.com', role: UserRole.VIEWER, status: UserStatus.ACTIVE },
+  { fullName: 'Cody Fisher', email: 'cody.f@example.com', role: UserRole.EDITOR, status: UserStatus.ACTIVE },
+  { fullName: 'Albert Flores', email: 'albert.f@example.com', role: UserRole.VIEWER, status: UserStatus.ACTIVE },
+];
+
+const SERVICE_TYPES = Object.values(ServiceType);
+const DURATIONS = [60, 90, 120];
+const PAYMENT_METHODS = [
+  'Credit Card (Visa ending in 4582)',
+  'Direct PayPal Link',
+  'Bank Transfer',
+  'Credit Card (Mastercard ending in 7781)',
+];
+
+async function main() {
+  console.log('🌱 Seeding AdminHub database...');
+
+  // Clean slate (respect FK order)
+  await prisma.transactionEvent.deleteMany();
+  await prisma.bookingEvent.deleteMany();
+  await prisma.activityLog.deleteMany();
+  await prisma.booking.deleteMany();
+  await prisma.transaction.deleteMany();
+  await prisma.alert.deleteMany();
+  await prisma.systemHealthSnapshot.deleteMany();
+  await prisma.user.deleteMany();
+
+  // ─── Admin ───
+  const adminHash = await bcrypt.hash(ADMIN_PASSWORD, SALT_ROUNDS);
+  const admin = await prisma.user.create({
+    data: {
+      displayId: pad('USR', 1),
+      fullName: 'System Administrator',
+      email: ADMIN_EMAIL,
+      passwordHash: adminHash,
+      role: UserRole.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+      phone: '+1 555-0100',
+      mailingAddress: 'HQ, New York, NY',
+      twoFactorEnabled: true,
+      joinedAt: new Date('2026-01-01'),
+      lastActiveAt: new Date(),
+    },
+  });
+
+  // ─── Users ───
+  const commonHash = await bcrypt.hash('Password@123', SALT_ROUNDS);
+  const users = [admin];
+  for (let i = 0; i < USER_SEED.length; i++) {
+    const u = USER_SEED[i];
+    const joined = new Date(2026, randInt(0, 8), randInt(1, 28));
+    const user = await prisma.user.create({
+      data: {
+        displayId: pad('USR', i + 2),
+        fullName: u.fullName,
+        email: u.email,
+        passwordHash: commonHash,
+        role: u.role,
+        status: u.status,
+        phone: `+1 555-${pad('', randInt(100, 999)).slice(1)}`,
+        dateOfBirth: new Date(randInt(1985, 1998), randInt(0, 11), randInt(1, 28)),
+        mailingAddress: `${randInt(1, 999)} Business Rd, New York, NY`,
+        twoFactorEnabled: Math.random() > 0.5,
+        joinedAt: joined,
+        lastActiveAt: new Date(Date.now() - randInt(0, 7) * 86400000),
+      },
+    });
+    users.push(user);
+
+    // Activity log per user
+    await prisma.activityLog.createMany({
+      data: [
+        { userId: user.id, title: `Logged in from new device`, description: 'MacOS Chrome, Brooklyn, NY' },
+        { userId: user.id, title: `Updated profile`, description: 'Refreshed account details' },
+      ],
+    });
+  }
+
+  // ─── Transactions (spread across last 12 months for chart data) ───
+  const txnStatuses = [
+    TransactionStatus.COMPLETED,
+    TransactionStatus.COMPLETED,
+    TransactionStatus.COMPLETED,
+    TransactionStatus.PENDING,
+    TransactionStatus.FAILED,
+    TransactionStatus.REFUNDED,
+  ];
+  const customers = users.filter((u) => u.role !== UserRole.SUPER_ADMIN);
+  let txnCounter = 1000;
+  const now = new Date();
+
+  for (let m = 11; m >= 0; m--) {
+    const perMonth = randInt(15, 30);
+    for (let k = 0; k < perMonth; k++) {
+      const occurredAt = new Date(now.getFullYear(), now.getMonth() - m, randInt(1, 28), randInt(8, 18), randInt(0, 59));
+      const type = pick([
+        TransactionType.PAYMENT,
+        TransactionType.PAYMENT,
+        TransactionType.PAYMENT,
+        TransactionType.REFUND,
+        TransactionType.TRANSFER,
+      ]);
+      const status = type === TransactionType.REFUND ? TransactionStatus.REFUNDED : pick(txnStatuses);
+      const base = money(50, 2500);
+      const amount = type === TransactionType.REFUND ? -base : base;
+      const gatewayFee = money(1, 10);
+      const user = pick(customers);
+      txnCounter++;
+
+      await prisma.transaction.create({
+        data: {
+          displayId: pad('TXN', txnCounter),
+          reference: pad('REF', randInt(10000000, 99999999)),
+          userId: user.id,
+          type,
+          amount: new Prisma.Decimal(amount),
+          status,
+          paymentMethod: pick(PAYMENT_METHODS),
+          gatewayFee: new Prisma.Decimal(gatewayFee),
+          subtotal: new Prisma.Decimal(Math.abs(amount) - gatewayFee),
+          grandTotal: new Prisma.Decimal(Math.abs(amount)),
+          occurredAt,
+          settledAt: status === TransactionStatus.COMPLETED ? occurredAt : null,
+          events: {
+            create: [
+              { label: 'Initiated', description: 'Checkout session initialized', occurredAt },
+              ...(status === TransactionStatus.COMPLETED
+                ? [{ label: 'Completed & Disbursed', description: 'Settled in merchant bank account', occurredAt }]
+                : []),
+            ],
+          },
+        },
+      });
+    }
+  }
+
+  // ─── Bookings (spread around now) ───
+  const bookingStatuses = [
+    BookingStatus.CONFIRMED,
+    BookingStatus.COMPLETED,
+    BookingStatus.COMPLETED,
+    BookingStatus.PENDING,
+    BookingStatus.CANCELLED,
+  ];
+  let bkgCounter = 2300;
+  for (let i = 0; i < 40; i++) {
+    const scheduledAt = new Date(now.getFullYear(), now.getMonth(), randInt(-20, 25), pick([9, 10, 11, 14, 15, 16]), pick([0, 30]));
+    const status = pick(bookingStatuses);
+    const user = pick(customers);
+    const amount = money(90, 1200);
+    bkgCounter++;
+
+    await prisma.booking.create({
+      data: {
+        displayId: pad('BKG', bkgCounter),
+        userId: user.id,
+        serviceType: pick(SERVICE_TYPES),
+        scheduledAt,
+        durationMinutes: pick(DURATIONS),
+        status,
+        amount: new Prisma.Decimal(amount),
+        location: pick(['Virtual - Zoom Link Provided', 'HQ Meeting Room A', 'Client Office']),
+        meetingTimeSlot: '2:00 PM - 3:30 PM (EST)',
+        clientNotes: 'Need assistance with expanding payment gateway options.',
+        paymentStatus: status === BookingStatus.COMPLETED ? PaymentStatus.PAID : pick([PaymentStatus.PAID, PaymentStatus.UNPAID]),
+        invoiceRef: pad('INV', randInt(10000, 99999)),
+        events: {
+          create: [
+            { label: 'Booking Created', description: 'Client self-service reservation', occurredAt: new Date(scheduledAt.getTime() - 3 * 86400000) },
+            { label: 'Status Set to Confirmed', description: 'Consultant assigned automatically', occurredAt: new Date(scheduledAt.getTime() - 2 * 86400000) },
+          ],
+        },
+      },
+    });
+  }
+
+  // ─── Alerts ───
+  await prisma.alert.createMany({
+    data: [
+      { title: 'Server capacity at 92%', description: 'Scale resources', severity: AlertSeverity.CRITICAL, createdAt: new Date(Date.now() - 2 * 3600000) },
+      { title: '15 transactions pending', description: 'Pending review', severity: AlertSeverity.WARNING, createdAt: new Date(Date.now() - 5 * 3600000) },
+      { title: 'System maintenance scheduled', description: 'Scheduled for Oct 5', severity: AlertSeverity.INFO, createdAt: new Date(Date.now() - 86400000) },
+      { title: 'Backup completed successfully', description: 'Nightly backup finished', severity: AlertSeverity.SUCCESS, createdAt: new Date(Date.now() - 90000000) },
+    ],
+  });
+
+  // ─── System health snapshot ───
+  await prisma.systemHealthSnapshot.create({
+    data: {
+      uptimePercent: new Prisma.Decimal(99.8),
+      avgResponseTimeMs: 142,
+      activeSessions: 3241,
+    },
+  });
+
+  const [uCount, tCount, bCount] = await Promise.all([
+    prisma.user.count(),
+    prisma.transaction.count(),
+    prisma.booking.count(),
+  ]);
+
+  console.log('✅ Seed complete');
+  console.log(`   Users:        ${uCount}`);
+  console.log(`   Transactions: ${tCount}`);
+  console.log(`   Bookings:     ${bCount}`);
+  console.log(`\n   Admin login → ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Seed failed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
