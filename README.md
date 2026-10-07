@@ -1,0 +1,170 @@
+# AdminHub API
+
+Production-ready REST API for the **AdminHub** admin console — Backend Developer Round 2 Practical Assignment.
+
+Built from the Figma design as the primary source of truth (see [docs/REQUIREMENTS_ANALYSIS.md](docs/REQUIREMENTS_ANALYSIS.md)).
+
+## Tech Stack
+- **NestJS 10** + **Node.js 20** + **TypeScript**
+- **PostgreSQL 16** (via Docker)
+- **Prisma 5** ORM (migrations + seed)
+- **JWT** auth (`@nestjs/jwt` + Passport), **bcrypt** password hashing
+- **class-validator / class-transformer** DTO validation
+- **Swagger / OpenAPI** documentation
+- **Helmet** + **@nestjs/throttler** rate limiting
+
+## Modules
+| Module | Responsibility |
+|--------|----------------|
+| Auth | Login, current user, JWT guards, role guards |
+| Users | CRUD, filter/search/sort, bulk role/suspend, detail with activity + related records |
+| Transactions | List, detail (events + ledger), create, status change |
+| Bookings | List, detail (events + customer summary), create, reschedule/cancel |
+| Dashboard | KPI stats (with vs-last-month %), revenue charts, alerts, system health |
+
+---
+
+## Quick Start
+
+### 1. Prerequisites
+- Node.js 20+
+- Docker (for PostgreSQL) — or your own PostgreSQL 16 instance
+
+### 2. Install
+```bash
+npm install
+```
+
+### 3. Environment
+```bash
+cp .env.example .env
+# adjust values if needed (JWT_SECRET, DB creds, admin seed creds)
+```
+
+### 4. Start the database
+```bash
+docker compose up -d
+```
+This runs PostgreSQL on **localhost:5433** (mapped to avoid clashing with a local 5432).
+
+### 5. Run migrations
+```bash
+npm run prisma:migrate      # creates tables from migrations (dev)
+# or, against a clean DB in CI/prod:
+npm run prisma:deploy
+```
+
+### 6. Seed realistic data
+```bash
+npm run db:seed
+```
+
+### 7. Run the API
+```bash
+npm run start:dev
+```
+- API base: `http://localhost:3000/api`
+- Swagger UI: `http://localhost:3000/api/docs`
+
+---
+
+## Test Admin Credentials
+| Email | Password |
+|-------|----------|
+| `admin@adminhub.com` | `Admin@12345` |
+
+Other seeded users log in with password `Password@123`.
+
+> Configure via `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` in `.env`.
+
+---
+
+## API Overview
+
+All routes are prefixed with `/api`. All routes except `POST /auth/login` require
+`Authorization: Bearer <token>`.
+
+### Auth
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/auth/login` | Public, rate-limited (5/min) |
+| GET | `/auth/me` | Current user |
+
+### Dashboard
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/dashboard/stats` | 4 KPIs + % change vs last month |
+| GET | `/dashboard/charts?range=6M` | `7D\|1M\|3M\|6M\|1Y` |
+| GET | `/dashboard/alerts` | System alerts |
+| GET | `/dashboard/health` | Uptime / response time / sessions |
+
+### Users
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/users` | `page,limit,search,role,status,sortBy,sortOrder,dateFrom,dateTo` |
+| GET | `/users/:id` | + activity log, recent txns & bookings |
+| POST | `/users` | Admin+ |
+| PATCH | `/users/:id` | Editor+ |
+| PATCH | `/users/bulk` | Bulk `CHANGE_ROLE\|SUSPEND\|ACTIVATE` |
+| DELETE | `/users/:id` | Admin+ |
+
+### Transactions
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/transactions` | `search,type,status,amountMin,amountMax,dateFrom,dateTo,sort*` |
+| GET | `/transactions/:id` | + events + related ledger |
+| POST | `/transactions` | Editor+ |
+| PATCH | `/transactions/:id/status` | Editor+ |
+
+### Bookings
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/bookings` | `search,status,serviceType,paymentStatus,dateFrom,dateTo,sort*` |
+| GET | `/bookings/:id` | + events + customer summary |
+| POST | `/bookings` | Editor+ |
+| PATCH | `/bookings/:id` | Reschedule / cancel / update |
+
+### List response shape
+```json
+{
+  "data": [],
+  "meta": { "page": 1, "limit": 20, "total": 100, "totalPages": 5 }
+}
+```
+
+### Error response shape
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "error": "Bad Request",
+  "timestamp": "2026-10-06T00:00:00.000Z",
+  "path": "/api/users"
+}
+```
+
+---
+
+## Scripts
+| Script | Action |
+|--------|--------|
+| `npm run start:dev` | Run with watch |
+| `npm run build` | Compile to `dist/` |
+| `npm run prisma:migrate` | Create/apply dev migration |
+| `npm run prisma:deploy` | Apply migrations (prod/CI) |
+| `npm run db:seed` | Seed realistic data |
+| `npm run db:reset` | Drop, re-migrate, re-seed |
+| `npm run prisma:studio` | Visual DB browser |
+
+---
+
+## Architecture Notes
+- **Thin controllers**, business logic in services.
+- Shared helpers for pagination / sorting / date-range filtering (`src/common/pagination`).
+- Global `ValidationPipe` with whitelist + `forbidNonWhitelisted` (unknown props rejected).
+- Global `HttpExceptionFilter` → consistent error shape, maps Prisma errors to HTTP codes.
+- Dashboard statistics & chart series are **computed in the backend**, never by the client.
+- Passwords hashed with bcrypt; password hashes never leave the service layer.
+- JWT guard applied globally (`@Public()` opts out); `@Roles()` for RBAC.
+
+See [docs/REQUIREMENTS_ANALYSIS.md](docs/REQUIREMENTS_ANALYSIS.md) and [docs/ER_DIAGRAM.md](docs/ER_DIAGRAM.md).
