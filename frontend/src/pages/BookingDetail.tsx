@@ -1,7 +1,18 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
 import { useApi } from '../lib/useApi';
-import { Card, StatusBadge, Avatar, Spinner, Badge } from '../components/ui';
+import { api } from '../lib/api';
+import {
+  Card,
+  StatusBadge,
+  Avatar,
+  Spinner,
+  Badge,
+  Modal,
+  Field,
+  ConfirmDialog,
+} from '../components/ui';
 import { money, date, titleCase, duration } from '../lib/format';
 import type { Booking } from '../lib/types';
 
@@ -16,9 +27,44 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function BookingDetail() {
   const { id } = useParams();
-  const { data: b, loading } = useApi<Booking>(`/bookings/${id}`);
+  const { data: b, loading, reload } = useApi<Booking>(`/bookings/${id}`);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [when, setWhen] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function reschedule(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.patch(`/bookings/${id}`, {
+        scheduledAt: new Date(when).toISOString(),
+      });
+      setRescheduleOpen(false);
+      reload();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancelBooking() {
+    setBusy(true);
+    try {
+      await api.patch(`/bookings/${id}`, { status: 'CANCELLED' });
+      setCancelOpen(false);
+      reload();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (loading) return <Spinner />;
   if (!b) return <p className="text-slate-400">Booking not found.</p>;
@@ -47,11 +93,68 @@ export default function BookingDetail() {
             </p>
           </div>
           <div className="flex gap-2">
-            <button className="btn-ghost h-9">Reschedule</button>
-            <button className="btn-ghost h-9 text-red-600">Cancel Booking</button>
+            <button
+              className="btn-ghost h-9"
+              onClick={() => {
+                setWhen(toLocalInput(b.scheduledAt));
+                setRescheduleOpen(true);
+              }}
+              disabled={b.status === 'CANCELLED'}
+            >
+              Reschedule
+            </button>
+            <button
+              className="btn-ghost h-9 text-red-600 disabled:opacity-50"
+              onClick={() => setCancelOpen(true)}
+              disabled={b.status === 'CANCELLED'}
+            >
+              {b.status === 'CANCELLED' ? 'Cancelled' : 'Cancel Booking'}
+            </button>
           </div>
         </div>
       </Card>
+
+      <Modal
+        open={rescheduleOpen}
+        onClose={() => setRescheduleOpen(false)}
+        title="Reschedule Booking"
+      >
+        <form onSubmit={reschedule} className="space-y-3">
+          <Field label="New Date & Time">
+            <input
+              type="datetime-local"
+              className="input"
+              value={when}
+              onChange={(e) => setWhen(e.target.value)}
+              required
+            />
+          </Field>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              className="btn-ghost h-9"
+              onClick={() => setRescheduleOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary h-9" disabled={busy}>
+              {busy && <Loader2 className="size-4 animate-spin" />}
+              Save
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={cancelBooking}
+        title="Cancel Booking"
+        message={`Cancel booking ${b.displayId}? The customer's slot will be released.`}
+        confirmLabel="Cancel Booking"
+        danger
+        busy={busy}
+      />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">

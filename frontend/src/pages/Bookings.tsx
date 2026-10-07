@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { useApi } from '../lib/useApi';
 import {
   StatCard,
@@ -11,6 +11,7 @@ import {
   EmptyState,
   PageHeader,
 } from '../components/ui';
+import { NewBookingModal } from '../components/NewBookingModal';
 import { money, num, date, titleCase, duration } from '../lib/format';
 import type { Paginated, Booking, Kpi } from '../lib/types';
 
@@ -41,8 +42,10 @@ export default function Bookings() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
-  const { data: stats } = useApi<BookingStats>('/bookings/stats');
-  const { data, loading } = useApi<Paginated<Booking>>('/bookings', {
+  const [addOpen, setAddOpen] = useState(false);
+
+  const { data: stats, reload: reloadStats } = useApi<BookingStats>('/bookings/stats');
+  const { data, loading, reload } = useApi<Paginated<Booking>>('/bookings', {
     page,
     limit,
     search,
@@ -50,11 +53,27 @@ export default function Bookings() {
     serviceType,
   });
 
+  function afterCreate() {
+    reload();
+    reloadStats();
+  }
+
   return (
     <div>
       <PageHeader
         title="Bookings Directory"
         subtitle="Manage all service bookings and consultation meetings"
+        action={
+          <button className="btn-primary h-9" onClick={() => setAddOpen(true)}>
+            <Plus className="size-4" /> New Booking
+          </button>
+        }
+      />
+
+      <NewBookingModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={afterCreate}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">

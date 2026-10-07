@@ -1,5 +1,12 @@
 import type { ReactNode } from 'react';
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  X,
+} from 'lucide-react';
 
 type Tone = 'success' | 'warning' | 'error' | 'info' | 'brand' | 'slate';
 
@@ -254,5 +261,47 @@ export function Field({
       </span>
       {children}
     </label>
+  );
+}
+
+export function ConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmLabel = 'Confirm',
+  danger = false,
+  busy = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  danger?: boolean;
+  busy?: boolean;
+}) {
+  return (
+    <Modal open={open} onClose={onClose} title={title}>
+      <p className="text-sm text-slate-600">{message}</p>
+      <div className="flex justify-end gap-2 pt-4">
+        <button type="button" className="btn-ghost h-9" onClick={onClose}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={busy}
+          className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium text-white disabled:opacity-60 ${
+            danger ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-600 hover:bg-brand-700'
+          }`}
+        >
+          {busy && <Loader2 className="size-4 animate-spin" />}
+          {confirmLabel}
+        </button>
+      </div>
+    </Modal>
   );
 }

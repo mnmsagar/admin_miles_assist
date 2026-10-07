@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { useApi } from '../lib/useApi';
 import {
   StatCard,
@@ -12,6 +12,7 @@ import {
   EmptyState,
   PageHeader,
 } from '../components/ui';
+import { AddUserModal } from '../components/AddUserModal';
 import { num, date, relative } from '../lib/format';
 import type { Paginated, User } from '../lib/types';
 
@@ -28,8 +29,10 @@ export default function Users() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
-  const { data: stats } = useApi<UserStats>('/users/stats');
-  const { data, loading } = useApi<Paginated<User>>('/users', {
+  const [addOpen, setAddOpen] = useState(false);
+
+  const { data: stats, reload: reloadStats } = useApi<UserStats>('/users/stats');
+  const { data, loading, reload } = useApi<Paginated<User>>('/users', {
     page,
     limit,
     search,
@@ -37,11 +40,27 @@ export default function Users() {
     status,
   });
 
+  function afterCreate() {
+    reload();
+    reloadStats();
+  }
+
   return (
     <div>
       <PageHeader
         title="Users Directory"
         subtitle="Manage all registered users in your application"
+        action={
+          <button className="btn-primary h-9" onClick={() => setAddOpen(true)}>
+            <Plus className="size-4" /> Add User
+          </button>
+        }
+      />
+
+      <AddUserModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={afterCreate}
       />
 
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">

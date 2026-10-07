@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useApi } from '../lib/useApi';
-import { Card, StatusBadge, Avatar, Spinner } from '../components/ui';
+import { api } from '../lib/api';
+import { Card, StatusBadge, Avatar, Spinner, ConfirmDialog } from '../components/ui';
 import { money, date } from '../lib/format';
 import type { Transaction } from '../lib/types';
 
@@ -18,7 +20,23 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default function TransactionDetail() {
   const { id } = useParams();
-  const { data: t, loading } = useApi<Transaction>(`/transactions/${id}`);
+  const { data: t, loading, reload } = useApi<Transaction>(`/transactions/${id}`);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function refund() {
+    setBusy(true);
+    try {
+      await api.patch(`/transactions/${id}/status`, {
+        status: 'REFUNDED',
+        note: 'Refunded from admin console',
+      });
+      setRefundOpen(false);
+      reload();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (loading) return <Spinner />;
   if (!t) return <p className="text-slate-400">Transaction not found.</p>;
@@ -47,11 +65,30 @@ export default function TransactionDetail() {
             </p>
           </div>
           <div className="flex gap-2">
-            <button className="btn-ghost h-9">Print Receipt</button>
-            <button className="btn-ghost h-9 text-red-600">Refund</button>
+            <button className="btn-ghost h-9" onClick={() => window.print()}>
+              Print Receipt
+            </button>
+            <button
+              className="btn-ghost h-9 text-red-600 disabled:opacity-50"
+              onClick={() => setRefundOpen(true)}
+              disabled={t.status === 'REFUNDED'}
+            >
+              {t.status === 'REFUNDED' ? 'Refunded' : 'Refund'}
+            </button>
           </div>
         </div>
       </Card>
+
+      <ConfirmDialog
+        open={refundOpen}
+        onClose={() => setRefundOpen(false)}
+        onConfirm={refund}
+        title="Refund Transaction"
+        message={`Mark ${t.displayId} (${money(t.amount)}) as refunded? This updates its status and records an event.`}
+        confirmLabel="Refund"
+        danger
+        busy={busy}
+      />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
