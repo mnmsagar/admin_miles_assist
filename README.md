@@ -25,9 +25,10 @@ the application's users. The two populations are modelled as separate tables:
 |--------|----------------|
 | Auth | Admin login, refresh/logout, current user, JWT + role guards |
 | Admin Users | Admin-team CRUD, filter/search/sort, bulk role/suspend |
+| Audit Logs | Admin operation trail, global audit interceptor, filterable activity history |
 | Users | User CRUD, filter/search/sort, bulk role/suspend, detail with activity + transactions + bookings |
-| Transactions | List, detail (events + ledger), create, status change |
-| Bookings | List, detail (events + user summary), create, reschedule/cancel |
+| Transactions | List, detail (events + ledger), create, status change, CSV export |
+| Bookings | List, detail (events + user summary), create, reschedule (start & end times), cancel |
 | Dashboard | KPI stats (Total Users, with vs-last-month %), revenue charts, alerts, system health |
 
 ---
@@ -73,6 +74,25 @@ npm run start:dev
 ```
 - API base: `http://localhost:3000/api`
 - Swagger UI: `http://localhost:3000/api/docs`
+
+### 8. Run Automated Tests
+```bash
+npm test
+```
+Runs Jest unit tests for controllers and pagination/filter helpers.
+
+---
+
+## Postman API Collection
+A pre-configured, complete Postman collection is located at [`docs/AdminHub.postman_collection.json`](docs/AdminHub.postman_collection.json).
+
+- **Coverage:** 36 endpoints covering all 8 modules (Auth, Dashboard, Users, Admin Users, Audit Logs, Transactions, Bookings, Health).
+- **Auto-Token Capture:** Running `Auth > Login as Super Admin` (or any admin) executes a Postman test script that automatically extracts `accessToken` and saves it to collection variables `{{accessToken}}` and `{{refreshToken}}`. All authenticated endpoints inherit `Bearer {{accessToken}}` automatically.
+- **Import into Postman:**
+  1. Open Postman -> Click **Import**.
+  2. Select `docs/AdminHub.postman_collection.json`.
+  3. Ensure the collection variable `baseUrl` is set to `http://localhost:3000/api` (default).
+  4. Run `Auth > Login as Super Admin` first, then test any other endpoints.
 
 ---
 
@@ -233,9 +253,11 @@ revoked), and can be revoked via logout.
 |--------|--------|
 | `npm run start:dev` | Run with watch |
 | `npm run build` | Compile to `dist/` |
+| `npm test` | Run Jest unit tests |
+| `npm run test:e2e` | Run e2e tests |
 | `npm run prisma:migrate` | Create/apply dev migration |
 | `npm run prisma:deploy` | Apply migrations (prod/CI) |
-| `npm run db:seed` | Seed realistic data |
+| `npm run db:seed` | Seed realistic data (5 admins, 15 users, 265 txns, 40 bookings, audit logs) |
 | `npm run db:reset` | Drop, re-migrate, re-seed |
 | `npm run prisma:studio` | Visual DB browser |
 
