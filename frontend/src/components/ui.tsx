@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 type Tone = 'success' | 'warning' | 'error' | 'info' | 'brand' | 'slate';
 
@@ -200,5 +200,59 @@ export function Spinner() {
 export function EmptyState({ message }: { message: string }) {
   return (
     <div className="py-16 text-center text-sm text-slate-400">{message}</div>
+  );
+}
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="card max-h-[90vh] w-full max-w-md overflow-y-auto p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600"
+            aria-label="Close"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[13px] font-medium text-slate-700">
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }

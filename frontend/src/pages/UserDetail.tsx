@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useApi } from '../lib/useApi';
+import { api } from '../lib/api';
 import { Card, StatusBadge, Avatar, Spinner, Badge } from '../components/ui';
+import { EditUserModal } from '../components/EditUserModal';
 import { date, relative, money } from '../lib/format';
 import type { User } from '../lib/types';
 
@@ -18,7 +21,22 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default function UserDetail() {
   const { id } = useParams();
-  const { data: user, loading } = useApi<User>(`/users/${id}`);
+  const { data: user, loading, reload } = useApi<User>(`/users/${id}`);
+  const [editOpen, setEditOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function toggleSuspend() {
+    if (!user) return;
+    setBusy(true);
+    try {
+      await api.patch(`/users/${user.id}`, {
+        status: user.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED',
+      });
+      reload();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (loading) return <Spinner />;
   if (!user) return <p className="text-slate-400">User not found.</p>;
@@ -48,11 +66,28 @@ export default function UserDetail() {
             </p>
           </div>
           <div className="flex gap-2">
-            <button className="btn-ghost h-9">Edit Profile</button>
-            <button className="btn-ghost h-9 text-red-600">Suspend User</button>
+            <button className="btn-ghost h-9" onClick={() => setEditOpen(true)}>
+              Edit Profile
+            </button>
+            <button
+              className={`btn-ghost h-9 ${
+                user.status === 'SUSPENDED' ? 'text-emerald-600' : 'text-red-600'
+              }`}
+              onClick={toggleSuspend}
+              disabled={busy}
+            >
+              {user.status === 'SUSPENDED' ? 'Activate User' : 'Suspend User'}
+            </button>
           </div>
         </div>
       </Card>
+
+      <EditUserModal
+        user={user}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSaved={reload}
+      />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
