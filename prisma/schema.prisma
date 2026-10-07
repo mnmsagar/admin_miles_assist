@@ -96,6 +96,7 @@ model AdminUser {
   updatedAt        DateTime      @updatedAt
 
   refreshTokens RefreshToken[]
+  activityLogs  AdminActivityLog[]
 
   @@index([role])
   @@index([status])
@@ -273,4 +274,25 @@ model SystemHealthSnapshot {
 
   @@index([capturedAt])
   @@map("system_health_snapshots")
+}
+
+model AdminActivityLog {
+  id          String    @id @default(uuid())
+  adminUserId String
+  action      String
+  entityType  String
+  entityId    String?
+  description String?
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("admin_activity_logs")
 }

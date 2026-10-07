@@ -168,6 +168,11 @@ revoked), and can be revoked via logout.
 | PATCH | `/admin-users/bulk` | Bulk `CHANGE_ROLE\|SUSPEND\|ACTIVATE` |
 | DELETE | `/admin-users/:id` | Super Admin |
 
+### Audit Logs (admin operation trail)
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/audit-logs` | `page,limit,search,adminUserId,action,entityType,dateFrom,dateTo,sort*` (Admin+) |
+
 ### Users (the application's registered users)
 | Method | Path | Notes |
 |--------|------|-------|

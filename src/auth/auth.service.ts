@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { AdminUser } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { LoginDto } from './dto/login.dto';
 import { toAdminUserDto } from '../admin-users/admin-users.mapper';
 
@@ -14,6 +15,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly auditService: AuditService,
   ) {}
 
   async login(dto: LoginDto) {
@@ -31,6 +33,14 @@ export class AuthService {
     await this.prisma.adminUser.update({
       where: { id: user.id },
       data: { lastActiveAt: new Date() },
+    });
+
+    await this.auditService.log({
+      adminUserId: user.id,
+      action: 'AUTH_LOGIN',
+      entityType: 'Auth',
+      entityId: user.id,
+      description: `Admin ${user.fullName} logged in successfully`,
     });
 
     const tokens = await this.issueTokens(user);
@@ -67,10 +77,23 @@ export class AuthService {
   /** Revoke a refresh token (idempotent). */
   async logout(refreshToken: string) {
     const tokenHash = this.hashToken(refreshToken);
+    const existing = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash },
+      select: { adminUserId: true },
+    });
     await this.prisma.refreshToken.updateMany({
       where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (existing?.adminUserId) {
+      await this.auditService.log({
+        adminUserId: existing.adminUserId,
+        action: 'AUTH_LOGOUT',
+        entityType: 'Auth',
+        entityId: existing.adminUserId,
+        description: 'Admin logged out (refresh token revoked)',
+      });
+    }
     return { success: true };
   }
 

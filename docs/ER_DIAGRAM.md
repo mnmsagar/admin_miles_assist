@@ -11,6 +11,7 @@ erDiagram
     USER ||--o{ BOOKING : "has"
     USER ||--o{ ACTIVITY_LOG : "has"
     ADMIN_USER ||--o{ REFRESH_TOKEN : "has"
+    ADMIN_USER ||--o{ ADMIN_ACTIVITY_LOG : "has"
     TRANSACTION ||--o{ TRANSACTION_EVENT : "has"
     BOOKING ||--o{ BOOKING_EVENT : "has"
     BOOKING |o--|| TRANSACTION : "invoice (optional)"
@@ -124,6 +125,19 @@ erDiagram
         string description
         enum severity "CRITICAL|WARNING|INFO|SUCCESS"
         bool isRead
+        datetime createdAt
+    }
+
+    ADMIN_ACTIVITY_LOG {
+        uuid id PK
+        uuid adminUserId FK
+        string action "USER_CREATE|BOOKING_RESCHEDULE|etc."
+        string entityType "User|Booking|Transaction|AdminUser|Auth"
+        string entityId "target resource id"
+        string description
+        json details
+        string ipAddress
+        string userAgent
         datetime createdAt
     }
 

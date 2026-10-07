@@ -9,6 +9,7 @@ import Transactions from './pages/Transactions';
 import TransactionDetail from './pages/TransactionDetail';
 import Bookings from './pages/Bookings';
 import BookingDetail from './pages/BookingDetail';
+import AuditLogs from './pages/AuditLogs';
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/transactions/:id" element={<TransactionDetail />} />
         <Route path="/bookings" element={<Bookings />} />
         <Route path="/bookings/:id" element={<BookingDetail />} />
+        <Route path="/audit-logs" element={<AuditLogs />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

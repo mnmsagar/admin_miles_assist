@@ -7,6 +7,7 @@ import {
   Search,
   LogOut,
   Cpu,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Avatar } from './ui';
@@ -17,6 +18,7 @@ const NAV = [
   { to: '/users', label: 'Users', icon: Users },
   { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { to: '/bookings', label: 'Bookings', icon: CalendarDays },
+  { to: '/audit-logs', label: 'Audit Logs', icon: ShieldCheck },
 ];
 
 export function Layout() {

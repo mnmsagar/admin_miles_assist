@@ -270,6 +270,48 @@ async function main() {
     },
   });
 
+  // ─── Admin activity logs ───
+  const primaryAdmin = adminUsers[0];
+  const secondaryAdmin = adminUsers[1] ?? primaryAdmin;
+  if (primaryAdmin) {
+    await prisma.adminActivityLog.createMany({
+      data: [
+        {
+          adminUserId: primaryAdmin.id,
+          action: 'AUTH_LOGIN',
+          entityType: 'Auth',
+          description: `Super Admin ${primaryAdmin.fullName} logged in successfully`,
+          ipAddress: '127.0.0.1',
+          createdAt: new Date(Date.now() - 3600000),
+        },
+        {
+          adminUserId: primaryAdmin.id,
+          action: 'BOOKING_RESCHEDULE',
+          entityType: 'Booking',
+          description: 'Rescheduled booking #BKG-2341 (2:00 PM - 3:30 PM)',
+          ipAddress: '127.0.0.1',
+          createdAt: new Date(Date.now() - 7200000),
+        },
+        {
+          adminUserId: secondaryAdmin.id,
+          action: 'USER_CREATE',
+          entityType: 'User',
+          description: 'Created new client user account',
+          ipAddress: '192.168.1.45',
+          createdAt: new Date(Date.now() - 14400000),
+        },
+        {
+          adminUserId: primaryAdmin.id,
+          action: 'TRANSACTION_STATUS_UPDATE',
+          entityType: 'Transaction',
+          description: 'Updated transaction TXN-1082 status to COMPLETED',
+          ipAddress: '127.0.0.1',
+          createdAt: new Date(Date.now() - 28800000),
+        },
+      ],
+    });
+  }
+
   const [aCount, cCount, tCount, bCount] = await Promise.all([
     prisma.adminUser.count(),
     prisma.user.count(),

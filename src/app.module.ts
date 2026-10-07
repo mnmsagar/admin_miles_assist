@@ -10,6 +10,7 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { HealthModule } from './health/health.module';
       },
     ]),
     PrismaModule,
+    AuditModule,
     AuthModule,
     AdminUsersModule,
     UsersModule,
