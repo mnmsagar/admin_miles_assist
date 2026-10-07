@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Loader2 } from 'lucide-react';
 import { useApi } from '../lib/useApi';
+import { api } from '../lib/api';
 import {
   StatCard,
   StatusBadge,
@@ -11,6 +12,8 @@ import {
   Spinner,
   EmptyState,
   PageHeader,
+  Modal,
+  Field,
 } from '../components/ui';
 import { AddUserModal } from '../components/AddUserModal';
 import { num, date, relative } from '../lib/format';
@@ -30,6 +33,10 @@ export default function Users() {
   const limit = 10;
 
   const [addOpen, setAddOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [roleOpen, setRoleOpen] = useState(false);
+  const [newRole, setNewRole] = useState('VIEWER');
+  const [busy, setBusy] = useState(false);
 
   const { data: stats, reload: reloadStats } = useApi<UserStats>('/users/stats');
   const { data, loading, reload } = useApi<Paginated<User>>('/users', {
@@ -40,9 +47,45 @@ export default function Users() {
     status,
   });
 
+  // clear selection whenever the result set changes
+  useEffect(() => {
+    setSelected(new Set());
+  }, [page, search, role, status]);
+
+  function toggle(id: string) {
+    setSelected((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function toggleAll() {
+    if (!data) return;
+    const ids = data.data.map((u) => u.id);
+    const allSelected = ids.every((id) => selected.has(id));
+    setSelected(allSelected ? new Set() : new Set(ids));
+  }
+
   function afterCreate() {
     reload();
     reloadStats();
+  }
+
+  async function bulk(action: 'SUSPEND' | 'ACTIVATE' | 'CHANGE_ROLE', r?: string) {
+    setBusy(true);
+    try {
+      await api.patch('/users/bulk', {
+        ids: [...selected],
+        action,
+        ...(action === 'CHANGE_ROLE' ? { role: r } : {}),
+      });
+      setSelected(new Set());
+      setRoleOpen(false);
+      reload();
+      reloadStats();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -62,6 +105,39 @@ export default function Users() {
         onClose={() => setAddOpen(false)}
         onCreated={afterCreate}
       />
+
+      <Modal
+        open={roleOpen}
+        onClose={() => setRoleOpen(false)}
+        title={`Change Role · ${selected.size} selected`}
+      >
+        <div className="space-y-3">
+          <Field label="New Role">
+            <select
+              className="input"
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value)}
+            >
+              <option value="ADMIN">Admin</option>
+              <option value="EDITOR">Editor</option>
+              <option value="VIEWER">Viewer</option>
+            </select>
+          </Field>
+          <div className="flex justify-end gap-2 pt-2">
+            <button className="btn-ghost h-9" onClick={() => setRoleOpen(false)}>
+              Cancel
+            </button>
+            <button
+              className="btn-primary h-9"
+              onClick={() => bulk('CHANGE_ROLE', newRole)}
+              disabled={busy}
+            >
+              {busy && <Loader2 className="size-4 animate-spin" />}
+              Apply
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Total Users" value={stats ? num(stats.totalUsers) : '—'} />
@@ -112,6 +188,38 @@ export default function Users() {
           </select>
         </div>
 
+        {/* Bulk action bar */}
+        {selected.size > 0 && (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2.5">
+            <span className="text-sm font-medium text-brand-700">
+              {selected.size} user{selected.size > 1 ? 's' : ''} selected
+            </span>
+            <div className="flex gap-2">
+              <button
+                className="btn-ghost h-8"
+                onClick={() => setRoleOpen(true)}
+                disabled={busy}
+              >
+                Change Role
+              </button>
+              <button
+                className="btn-ghost h-8 text-red-600"
+                onClick={() => bulk('SUSPEND')}
+                disabled={busy}
+              >
+                Suspend Accounts
+              </button>
+              <button
+                className="btn-ghost h-8 text-emerald-600"
+                onClick={() => bulk('ACTIVATE')}
+                disabled={busy}
+              >
+                Activate
+              </button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <Spinner />
         ) : !data || data.data.length === 0 ? (
@@ -123,6 +231,17 @@ export default function Users() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    <th className="w-10 px-3 py-3">
+                      <input
+                        type="checkbox"
+                        className="size-4 rounded border-slate-300 accent-brand-600"
+                        checked={
+                          data.data.length > 0 &&
+                          data.data.every((u) => selected.has(u.id))
+                        }
+                        onChange={toggleAll}
+                      />
+                    </th>
                     <th className="px-3 py-3">User</th>
                     <th className="px-3 py-3">Role</th>
                     <th className="px-3 py-3">Status</th>
@@ -134,8 +253,18 @@ export default function Users() {
                   {data.data.map((u) => (
                     <tr
                       key={u.id}
-                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                      className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 ${
+                        selected.has(u.id) ? 'bg-brand-50/50' : ''
+                      }`}
                     >
+                      <td className="px-3 py-3">
+                        <input
+                          type="checkbox"
+                          className="size-4 rounded border-slate-300 accent-brand-600"
+                          checked={selected.has(u.id)}
+                          onChange={() => toggle(u.id)}
+                        />
+                      </td>
                       <td className="px-3 py-3">
                         <Link to={`/users/${u.id}`} className="flex items-center gap-3">
                           <Avatar name={u.fullName} />
