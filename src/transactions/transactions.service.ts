@@ -10,12 +10,40 @@ import {
   dateRangeFilter,
 } from '../common/pagination/paginate';
 import { nextDisplayId, formatDisplayId } from '../common/utils/display-id';
+import { round2 } from '../common/utils/stats';
 
 const SORTABLE = ['occurredAt', 'amount', 'status', 'type', 'createdAt'];
 
 @Injectable()
 export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Stat cards for the Transactions screen. */
+  async getStats() {
+    const [agg, completed] = await this.prisma.$transaction([
+      this.prisma.transaction.aggregate({
+        _count: true,
+        _sum: { grandTotal: true },
+        _avg: { grandTotal: true },
+      }),
+      this.prisma.transaction.count({ where: { status: 'COMPLETED' } }),
+    ]);
+
+    const totalTransactions = agg._count;
+    const totalVolume = agg._sum.grandTotal ? Number(agg._sum.grandTotal) : 0;
+    const avgTransaction = agg._avg.grandTotal ? Number(agg._avg.grandTotal) : 0;
+    const successRate =
+      totalTransactions > 0
+        ? Math.round((completed / totalTransactions) * 1000) / 10
+        : 0;
+
+    return {
+      totalTransactions,
+      totalVolume: round2(totalVolume),
+      avgTransaction: round2(avgTransaction),
+      successRate, // percentage, 1 decimal
+    };
+  }
 
   async findAll(query: QueryTransactionsDto) {
     const where: Prisma.TransactionWhereInput = {};

@@ -2,31 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChartQueryDto, ChartRange } from './dto/chart-query.dto';
-
-export interface KpiChange {
-  value: number;
-  changePercent: number;
-  direction: 'up' | 'down' | 'neutral';
-}
-
-function pctChange(current: number, previous: number): KpiChange {
-  let changePercent = 0;
-  if (previous === 0) {
-    changePercent = current === 0 ? 0 : 100;
-  } else {
-    changePercent = ((current - previous) / previous) * 100;
-  }
-  changePercent = Math.round(changePercent * 10) / 10;
-  return {
-    value: current,
-    changePercent,
-    direction: changePercent > 0 ? 'up' : changePercent < 0 ? 'down' : 'neutral',
-  };
-}
-
-function startOfMonth(d: Date, offset = 0): Date {
-  return new Date(d.getFullYear(), d.getMonth() + offset, 1);
-}
+import { pctChange, startOfMonth } from '../common/utils/stats';
 
 @Injectable()
 export class DashboardService {

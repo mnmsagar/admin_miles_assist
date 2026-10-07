@@ -27,6 +27,12 @@ export class TransactionsController {
     return this.transactionsService.findAll(query);
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Transaction stat cards (total, volume, avg, success rate)' })
+  getStats() {
+    return this.transactionsService.getStats();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a transaction with events + related ledger' })
   findOne(@Param('id') id: string) {

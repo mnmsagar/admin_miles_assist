@@ -29,6 +29,12 @@ export class UsersController {
     return this.usersService.findAll(query);
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'User stat cards (total, active, new this month)' })
+  getStats() {
+    return this.usersService.getStats();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a user with activity, transactions, bookings' })
   findOne(@Param('id') id: string) {

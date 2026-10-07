@@ -15,12 +15,24 @@ import {
   dateRangeFilter,
 } from '../common/pagination/paginate';
 import { nextDisplayId } from '../common/utils/display-id';
+import { startOfMonth } from '../common/utils/stats';
 
 const SORTABLE = ['fullName', 'email', 'role', 'status', 'joinedAt', 'lastActiveAt'];
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Stat cards for the Users screen: total, active, new this month. */
+  async getStats() {
+    const monthStart = startOfMonth(new Date());
+    const [totalUsers, activeUsers, newThisMonth] = await this.prisma.$transaction([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.user.count({ where: { joinedAt: { gte: monthStart } } }),
+    ]);
+    return { totalUsers, activeUsers, newThisMonth };
+  }
 
   async findAll(query: QueryUsersDto) {
     const where: Prisma.UserWhereInput = {};

@@ -136,6 +136,7 @@ revoked), and can be revoked via logout.
 | Method | Path | Notes |
 |--------|------|-------|
 | GET | `/users` | `page,limit,search,role,status,sortBy,sortOrder,dateFrom,dateTo` |
+| GET | `/users/stats` | Stat cards: total, active, new this month |
 | GET | `/users/:id` | + activity log, recent txns & bookings |
 | POST | `/users` | Editor+ |
 | PATCH | `/users/:id` | Editor+ |
@@ -150,6 +151,7 @@ revoked), and can be revoked via logout.
 | Method | Path | Notes |
 |--------|------|-------|
 | GET | `/transactions` | `search,type,status,amountMin,amountMax,dateFrom,dateTo,sort*` |
+| GET | `/transactions/stats` | Stat cards: total, volume, avg, success rate |
 | GET | `/transactions/:id` | + events + related ledger |
 | POST | `/transactions` | Editor+ |
 | PATCH | `/transactions/:id/status` | Editor+ |
@@ -158,7 +160,8 @@ revoked), and can be revoked via logout.
 | Method | Path | Notes |
 |--------|------|-------|
 | GET | `/bookings` | `search,status,serviceType,paymentStatus,dateFrom,dateTo,sort*` |
-| GET | `/bookings/:id` | + events + customer summary |
+| GET | `/bookings/stats` | Stat cards: total/active/completed/cancelled + change |
+| GET | `/bookings/:id` | + events + user summary |
 | POST | `/bookings` | Editor+ |
 | PATCH | `/bookings/:id` | Reschedule / cancel / update |
 

@@ -27,6 +27,12 @@ export class BookingsController {
     return this.bookingsService.findAll(query);
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Booking stat cards (total/active/completed/cancelled + change)' })
+  getStats() {
+    return this.bookingsService.getStats();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a booking with events + customer summary' })
   findOne(@Param('id') id: string) {

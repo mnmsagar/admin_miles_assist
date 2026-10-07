@@ -10,12 +10,71 @@ import {
   dateRangeFilter,
 } from '../common/pagination/paginate';
 import { nextDisplayId } from '../common/utils/display-id';
+import { pctChange, startOfMonth } from '../common/utils/stats';
 
 const SORTABLE = ['scheduledAt', 'amount', 'status', 'serviceType', 'createdAt'];
 
 @Injectable()
 export class BookingsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Stat cards for the Bookings screen: total / active / completed / cancelled,
+   * each with a month-over-month change (by scheduled date) like the Figma design.
+   */
+  async getStats() {
+    const now = new Date();
+    const inThis = { gte: startOfMonth(now) };
+    const inLast = { gte: startOfMonth(now, -1), lt: startOfMonth(now) };
+
+    const active: Prisma.BookingWhereInput = {
+      status: { in: ['PENDING', 'CONFIRMED'] },
+    };
+    const completed: Prisma.BookingWhereInput = { status: 'COMPLETED' };
+    const cancelled: Prisma.BookingWhereInput = { status: 'CANCELLED' };
+
+    const [
+      total,
+      totalThis,
+      totalLast,
+      activeTotal,
+      activeThis,
+      activeLast,
+      completedTotal,
+      completedThis,
+      completedLast,
+      cancelledTotal,
+      cancelledThis,
+      cancelledLast,
+    ] = await this.prisma.$transaction([
+      this.prisma.booking.count(),
+      this.prisma.booking.count({ where: { scheduledAt: inThis } }),
+      this.prisma.booking.count({ where: { scheduledAt: inLast } }),
+      this.prisma.booking.count({ where: active }),
+      this.prisma.booking.count({ where: { ...active, scheduledAt: inThis } }),
+      this.prisma.booking.count({ where: { ...active, scheduledAt: inLast } }),
+      this.prisma.booking.count({ where: completed }),
+      this.prisma.booking.count({ where: { ...completed, scheduledAt: inThis } }),
+      this.prisma.booking.count({ where: { ...completed, scheduledAt: inLast } }),
+      this.prisma.booking.count({ where: cancelled }),
+      this.prisma.booking.count({ where: { ...cancelled, scheduledAt: inThis } }),
+      this.prisma.booking.count({ where: { ...cancelled, scheduledAt: inLast } }),
+    ]);
+
+    // value = all-time count for the card; changePercent/direction = this vs last month
+    return {
+      totalBookings: { ...pctChange(totalThis, totalLast), value: total },
+      activeBookings: { ...pctChange(activeThis, activeLast), value: activeTotal },
+      completedBookings: {
+        ...pctChange(completedThis, completedLast),
+        value: completedTotal,
+      },
+      cancelledBookings: {
+        ...pctChange(cancelledThis, cancelledLast),
+        value: cancelledTotal,
+      },
+    };
+  }
 
   async findAll(query: QueryBookingsDto) {
     const where: Prisma.BookingWhereInput = {};
