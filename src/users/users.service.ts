@@ -5,10 +5,10 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCustomerDto } from './dto/create-customer.dto';
-import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { QueryCustomersDto } from './dto/query-customers.dto';
-import { BulkCustomersDto } from './dto/bulk-customers.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { QueryUsersDto } from './dto/query-users.dto';
+import { BulkUsersDto } from './dto/bulk-users.dto';
 import {
   buildPage,
   resolveOrderBy,
@@ -19,11 +19,11 @@ import { nextDisplayId } from '../common/utils/display-id';
 const SORTABLE = ['fullName', 'email', 'role', 'status', 'joinedAt', 'lastActiveAt'];
 
 @Injectable()
-export class CustomersService {
+export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(query: QueryCustomersDto) {
-    const where: Prisma.CustomerWhereInput = {};
+  async findAll(query: QueryUsersDto) {
+    const where: Prisma.UserWhereInput = {};
 
     if (query.search) {
       where.OR = [
@@ -40,20 +40,20 @@ export class CustomersService {
     const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, SORTABLE, 'joinedAt');
 
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.customer.findMany({
+      this.prisma.user.findMany({
         where,
         orderBy,
         skip: query.skip,
         take: query.limit,
       }),
-      this.prisma.customer.count({ where }),
+      this.prisma.user.count({ where }),
     ]);
 
     return buildPage(rows, total, query.page, query.limit);
   }
 
   async findOne(id: string) {
-    const customer = await this.prisma.customer.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id },
       include: {
         activityLogs: { orderBy: { createdAt: 'desc' }, take: 10 },
@@ -61,19 +61,19 @@ export class CustomersService {
         bookings: { orderBy: { scheduledAt: 'desc' }, take: 5 },
       },
     });
-    if (!customer) throw new NotFoundException(`Customer ${id} not found`);
-    return customer;
+    if (!user) throw new NotFoundException(`User ${id} not found`);
+    return user;
   }
 
-  async create(dto: CreateCustomerDto) {
-    const existing = await this.prisma.customer.findUnique({
+  async create(dto: CreateUserDto) {
+    const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
     if (existing) throw new ConflictException('Email already in use');
 
     const displayId = await this.generateDisplayId();
 
-    return this.prisma.customer.create({
+    return this.prisma.user.create({
       data: {
         displayId,
         fullName: dto.fullName,
@@ -89,9 +89,9 @@ export class CustomersService {
     });
   }
 
-  async update(id: string, dto: UpdateCustomerDto) {
+  async update(id: string, dto: UpdateUserDto) {
     await this.ensureExists(id);
-    return this.prisma.customer.update({
+    return this.prisma.user.update({
       where: { id },
       data: {
         ...dto,
@@ -102,12 +102,12 @@ export class CustomersService {
 
   async remove(id: string) {
     await this.ensureExists(id);
-    await this.prisma.customer.delete({ where: { id } });
+    await this.prisma.user.delete({ where: { id } });
     return { id, deleted: true };
   }
 
-  async bulk(dto: BulkCustomersDto) {
-    const data: Prisma.CustomerUpdateManyMutationInput = {};
+  async bulk(dto: BulkUsersDto) {
+    const data: Prisma.UserUpdateManyMutationInput = {};
     switch (dto.action) {
       case 'CHANGE_ROLE':
         data.role = dto.role;
@@ -119,7 +119,7 @@ export class CustomersService {
         data.status = 'ACTIVE';
         break;
     }
-    const result = await this.prisma.customer.updateMany({
+    const result = await this.prisma.user.updateMany({
       where: { id: { in: dto.ids } },
       data,
     });
@@ -127,12 +127,12 @@ export class CustomersService {
   }
 
   private async ensureExists(id: string) {
-    const count = await this.prisma.customer.count({ where: { id } });
-    if (!count) throw new NotFoundException(`Customer ${id} not found`);
+    const count = await this.prisma.user.count({ where: { id } });
+    if (!count) throw new NotFoundException(`User ${id} not found`);
   }
 
   private async generateDisplayId(): Promise<string> {
-    const last = await this.prisma.customer.findFirst({
+    const last = await this.prisma.user.findFirst({
       orderBy: { displayId: 'desc' },
       select: { displayId: true },
     });

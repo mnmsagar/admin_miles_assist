@@ -13,22 +13,22 @@ Built from the Figma design as the primary source of truth (see [docs/REQUIREMEN
 - **Swagger / OpenAPI** documentation
 - **Helmet** + **@nestjs/throttler** rate limiting
 
-## Domain model: two user populations
-This API powers the **admin portal**. A separate **customer portal/website** serves
-end-users. The two populations are modelled as separate tables:
+## Domain model: two populations
+This API powers the **admin portal**. A separate **end-user portal/website** serves
+the application's users. The two populations are modelled as separate tables:
 - **AdminUser** — operators who log into this admin API (roles: Super Admin / Admin / Editor / Viewer).
-- **Customer** — website end-users shown/managed in the admin portal; they own the
-  transactions and bookings. (No admin-portal login.)
+- **User** — the application's registered users shown/managed in the admin portal
+  (the "Users Directory"); they carry a role and own the transactions and bookings.
 
 ## Modules
 | Module | Responsibility |
 |--------|----------------|
 | Auth | Admin login, refresh/logout, current user, JWT + role guards |
 | Admin Users | Admin-team CRUD, filter/search/sort, bulk role/suspend |
-| Customers | Customer CRUD, filter/search/sort, bulk suspend, detail with activity + transactions + bookings |
+| Users | User CRUD, filter/search/sort, bulk role/suspend, detail with activity + transactions + bookings |
 | Transactions | List, detail (events + ledger), create, status change |
-| Bookings | List, detail (events + customer summary), create, reschedule/cancel |
-| Dashboard | KPI stats (Total Users = customers, with vs-last-month %), revenue charts, alerts, system health |
+| Bookings | List, detail (events + user summary), create, reschedule/cancel |
+| Dashboard | KPI stats (Total Users, with vs-last-month %), revenue charts, alerts, system health |
 
 ---
 
@@ -132,19 +132,19 @@ revoked), and can be revoked via logout.
 | PATCH | `/admin-users/bulk` | Bulk `CHANGE_ROLE\|SUSPEND\|ACTIVATE` |
 | DELETE | `/admin-users/:id` | Super Admin |
 
-### Customers (website end-users)
+### Users (the application's registered users)
 | Method | Path | Notes |
 |--------|------|-------|
-| GET | `/customers` | `page,limit,search,role,status,sortBy,sortOrder,dateFrom,dateTo` |
-| GET | `/customers/:id` | + activity log, recent txns & bookings |
-| POST | `/customers` | Editor+ |
-| PATCH | `/customers/:id` | Editor+ |
-| PATCH | `/customers/bulk` | Bulk `CHANGE_ROLE\|SUSPEND\|ACTIVATE` |
-| DELETE | `/customers/:id` | Admin+ |
+| GET | `/users` | `page,limit,search,role,status,sortBy,sortOrder,dateFrom,dateTo` |
+| GET | `/users/:id` | + activity log, recent txns & bookings |
+| POST | `/users` | Editor+ |
+| PATCH | `/users/:id` | Editor+ |
+| PATCH | `/users/bulk` | Bulk `CHANGE_ROLE\|SUSPEND\|ACTIVATE` |
+| DELETE | `/users/:id` | Admin+ |
 
-> Customers also carry a `role` (Admin/Editor/Viewer), mirroring the Figma Users
-> Directory. It is a label on the customer record; admin-portal access is still
-> governed only by `AdminUser` roles.
+> Users carry a `role` (Admin/Editor/Viewer), mirroring the Figma Users Directory.
+> It is a label on the user record; admin-portal access is still governed only by
+> `AdminUser` roles.
 
 ### Transactions
 | Method | Path | Notes |

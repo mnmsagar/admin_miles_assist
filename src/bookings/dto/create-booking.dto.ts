@@ -11,9 +11,9 @@ import {
 } from 'class-validator';
 
 export class CreateBookingDto {
-  @ApiProperty({ description: 'Customer id' })
+  @ApiProperty({ description: 'User id' })
   @IsString()
-  customerId!: string;
+  userId!: string;
 
   @ApiProperty({ enum: ServiceType })
   @IsEnum(ServiceType)

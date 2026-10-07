@@ -5,11 +5,12 @@
 > Assumptions are explicitly tagged **[ASSUMPTION]**.
 
 > **Revision (user model):** This API powers the **admin portal**; a separate
-> **customer portal/website** serves end-users. Accordingly the single `User`
-> entity below was split into two tables — **AdminUser** (portal operators who log
-> in, with roles) and **Customer** (website end-users who own transactions &
-> bookings). FKs point to `Customer`; auth/refresh tokens belong to `AdminUser`;
-> dashboard "Total Users" counts customers. See [ER_DIAGRAM.md](./ER_DIAGRAM.md).
+> **end-user portal/website** serves the application's users. Accordingly there are
+> two tables — **AdminUser** (portal operators who log in) and **User** (the
+> application's registered users shown in the Users Directory, who carry a role and
+> own transactions & bookings). FKs point to `User` (`transactions.userId`,
+> `bookings.userId`); auth/refresh tokens belong to `AdminUser`; dashboard "Total
+> Users" counts `User` records. See [ER_DIAGRAM.md](./ER_DIAGRAM.md).
 
 ---
 

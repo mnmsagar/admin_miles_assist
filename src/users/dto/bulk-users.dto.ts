@@ -10,10 +10,10 @@ import {
   ValidateIf,
 } from 'class-validator';
 
-export type CustomerBulkAction = 'CHANGE_ROLE' | 'SUSPEND' | 'ACTIVATE';
+export type UserBulkAction = 'CHANGE_ROLE' | 'SUSPEND' | 'ACTIVATE';
 
-export class BulkCustomersDto {
-  @ApiProperty({ type: [String], description: 'Customer IDs to act on' })
+export class BulkUsersDto {
+  @ApiProperty({ type: [String], description: 'User IDs to act on' })
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
@@ -21,7 +21,7 @@ export class BulkCustomersDto {
 
   @ApiProperty({ enum: ['CHANGE_ROLE', 'SUSPEND', 'ACTIVATE'] })
   @IsIn(['CHANGE_ROLE', 'SUSPEND', 'ACTIVATE'])
-  action!: CustomerBulkAction;
+  action!: UserBulkAction;
 
   @ApiPropertyOptional({
     enum: AdminRole,

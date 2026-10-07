@@ -24,8 +24,8 @@ export class TransactionsService {
       where.OR = [
         { displayId: { contains: query.search, mode: 'insensitive' } },
         { reference: { contains: query.search, mode: 'insensitive' } },
-        { customer: { fullName: { contains: query.search, mode: 'insensitive' } } },
-        { customer: { email: { contains: query.search, mode: 'insensitive' } } },
+        { user: { fullName: { contains: query.search, mode: 'insensitive' } } },
+        { user: { email: { contains: query.search, mode: 'insensitive' } } },
       ];
     }
     if (query.type) where.type = query.type;
@@ -54,7 +54,7 @@ export class TransactionsService {
         skip: query.skip,
         take: query.limit,
         include: {
-          customer: {
+          user: {
             select: { id: true, fullName: true, email: true, displayId: true },
           },
         },
@@ -69,7 +69,7 @@ export class TransactionsService {
     const txn = await this.prisma.transaction.findUnique({
       where: { id },
       include: {
-        customer: {
+        user: {
           select: { id: true, fullName: true, email: true, displayId: true },
         },
         events: { orderBy: { occurredAt: 'desc' } },
@@ -77,9 +77,9 @@ export class TransactionsService {
     });
     if (!txn) throw new NotFoundException(`Transaction ${id} not found`);
 
-    // Related ledger entries: other transactions for the same customer
+    // Related ledger entries: other transactions for the same user
     const ledger = await this.prisma.transaction.findMany({
-      where: { customerId: txn.customerId, id: { not: txn.id } },
+      where: { userId: txn.userId, id: { not: txn.id } },
       orderBy: { occurredAt: 'desc' },
       take: 5,
       select: {
@@ -96,11 +96,11 @@ export class TransactionsService {
   }
 
   async create(dto: CreateTransactionDto) {
-    const customer = await this.prisma.customer.findUnique({
-      where: { id: dto.customerId },
+    const user = await this.prisma.user.findUnique({
+      where: { id: dto.userId },
       select: { id: true },
     });
-    if (!customer) throw new NotFoundException(`Customer ${dto.customerId} not found`);
+    if (!user) throw new NotFoundException(`User ${dto.userId} not found`);
 
     const displayId = await this.generateDisplayId();
     const reference = formatDisplayId('REF', Math.floor(Math.random() * 100000000));
@@ -109,7 +109,7 @@ export class TransactionsService {
       data: {
         displayId,
         reference,
-        customerId: dto.customerId,
+        userId: dto.userId,
         type: dto.type,
         amount: dto.amount,
         status: dto.status,

@@ -10,7 +10,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class CreateCustomerDto {
+export class CreateUserDto {
   @ApiProperty({ example: 'Sarah Johnson' })
   @IsString()
   @MinLength(2)

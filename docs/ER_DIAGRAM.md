@@ -2,14 +2,14 @@
 
 Two distinct populations:
 - **AdminUser** — operators of the admin portal (authenticate here, have roles).
-- **Customer** — end-users of the public website (subjects of transactions/bookings),
-  managed/viewed from the admin portal. No admin-portal login.
+- **User** — the application's registered users (subjects of transactions/bookings),
+  managed/viewed from the admin portal's Users Directory. No admin-portal login.
 
 ```mermaid
 erDiagram
-    CUSTOMER ||--o{ TRANSACTION : "has"
-    CUSTOMER ||--o{ BOOKING : "has"
-    CUSTOMER ||--o{ ACTIVITY_LOG : "has"
+    USER ||--o{ TRANSACTION : "has"
+    USER ||--o{ BOOKING : "has"
+    USER ||--o{ ACTIVITY_LOG : "has"
     ADMIN_USER ||--o{ REFRESH_TOKEN : "has"
     TRANSACTION ||--o{ TRANSACTION_EVENT : "has"
     BOOKING ||--o{ BOOKING_EVENT : "has"
@@ -31,7 +31,7 @@ erDiagram
         datetime updatedAt
     }
 
-    CUSTOMER {
+    USER {
         uuid id PK
         string displayId UK "USR-4821"
         string fullName
@@ -52,7 +52,7 @@ erDiagram
         uuid id PK
         string displayId UK "TXN-1082"
         string reference UK "REF-98342718"
-        uuid customerId FK
+        uuid userId FK
         enum type "PAYMENT|REFUND|TRANSFER"
         decimal amount "negative for refunds"
         enum status "PENDING|COMPLETED|FAILED|REFUNDED"
@@ -77,7 +77,7 @@ erDiagram
     BOOKING {
         uuid id PK
         string displayId UK "BKG-2341"
-        uuid customerId FK
+        uuid userId FK
         enum serviceType
         datetime scheduledAt
         int durationMinutes
@@ -103,7 +103,7 @@ erDiagram
 
     ACTIVITY_LOG {
         uuid id PK
-        uuid customerId FK
+        uuid userId FK
         string title
         string description
         datetime createdAt
@@ -138,22 +138,22 @@ erDiagram
 
 ## Relationships
 - **AdminUser → RefreshToken** (1:N, cascade) — only admins log into the portal.
-- **Customer → Transaction / Booking / ActivityLog** (1:N, cascade).
+- **User → Transaction / Booking / ActivityLog** (1:N, cascade).
 - **Transaction → TransactionEvent**, **Booking → BookingEvent** (1:N, cascade).
 - **Booking → Transaction** (optional 1:1 invoice link, `SetNull`).
 - **Alert**, **SystemHealthSnapshot** — standalone.
 
-## Why two tables (AdminUser vs Customer)
-This API powers the **admin portal**; a separate **customer portal/website** serves
-end-users. The two populations are disjoint: admins authenticate and manage; customers
-transact and book. Splitting keeps FKs unambiguous (`transactions.customerId` always
-points to a `Customer`), isolates admin credentials from customer data, and lets the
-`Customer` table be reused by the future customer portal. Dashboard "Total Users" counts
-customers.
+## Why two tables (AdminUser vs User)
+This API powers the **admin portal**; a separate **end-user portal/website** serves the
+application's users. The two populations are disjoint: admins authenticate and manage;
+users transact and book. Splitting keeps FKs unambiguous (`transactions.userId` always
+points to a `User`), isolates admin credentials from user data, and lets the `User`
+table be reused by the future end-user portal. Dashboard "Total Users" counts `User`
+records.
 
 ## Indexes
 - `AdminUser`: role, status, joinedAt, fullName, email
-- `Customer`: role, status, joinedAt, fullName, email
-- `Transaction`: customerId, status, type, occurredAt, amount
-- `Booking`: customerId, status, serviceType, scheduledAt, paymentStatus
+- `User`: role, status, joinedAt, fullName, email
+- `Transaction`: userId, status, type, occurredAt, amount
+- `Booking`: userId, status, serviceType, scheduledAt, paymentStatus
 - Event/log/token tables: foreign keys + createdAt

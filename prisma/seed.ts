@@ -86,7 +86,7 @@ async function main() {
   await prisma.alert.deleteMany();
   await prisma.systemHealthSnapshot.deleteMany();
   await prisma.refreshToken.deleteMany();
-  await prisma.customer.deleteMany();
+  await prisma.user.deleteMany();
   await prisma.adminUser.deleteMany();
 
   // ─── Admin users ───
@@ -125,11 +125,11 @@ async function main() {
     });
   }
 
-  // ─── Customers ───
-  const customers = [];
+  // ─── Users (website end-users) ───
+  const users = [];
   for (let i = 0; i < CUSTOMER_SEED.length; i++) {
     const c = CUSTOMER_SEED[i];
-    const customer = await prisma.customer.create({
+    const user = await prisma.user.create({
       data: {
         displayId: pad('USR', i + 1000),
         fullName: c.fullName,
@@ -144,12 +144,12 @@ async function main() {
         lastActiveAt: new Date(Date.now() - randInt(0, 7) * 86400000),
       },
     });
-    customers.push(customer);
+    users.push(user);
 
     await prisma.activityLog.createMany({
       data: [
-        { customerId: customer.id, title: 'Created booking', description: 'Service reservation' },
-        { customerId: customer.id, title: 'Logged in from new device', description: 'MacOS Chrome, Brooklyn, NY' },
+        { userId: user.id, title: 'Created booking', description: 'Service reservation' },
+        { userId: user.id, title: 'Logged in from new device', description: 'MacOS Chrome, Brooklyn, NY' },
       ],
     });
   }
@@ -181,14 +181,14 @@ async function main() {
       const base = money(50, 2500);
       const amount = type === TransactionType.REFUND ? -base : base;
       const gatewayFee = money(1, 10);
-      const customer = pick(customers);
+      const user = pick(users);
       txnCounter++;
 
       await prisma.transaction.create({
         data: {
           displayId: pad('TXN', txnCounter),
           reference: pad('REF', randInt(10000000, 99999999)),
-          customerId: customer.id,
+          userId: user.id,
           type,
           amount: new Prisma.Decimal(amount),
           status,
@@ -223,14 +223,14 @@ async function main() {
   for (let i = 0; i < 40; i++) {
     const scheduledAt = new Date(now.getFullYear(), now.getMonth(), randInt(-20, 25), pick([9, 10, 11, 14, 15, 16]), pick([0, 30]));
     const status = pick(bookingStatuses);
-    const customer = pick(customers);
+    const user = pick(users);
     const amount = money(90, 1200);
     bkgCounter++;
 
     await prisma.booking.create({
       data: {
         displayId: pad('BKG', bkgCounter),
-        customerId: customer.id,
+        userId: user.id,
         serviceType: pick(SERVICE_TYPES),
         scheduledAt,
         durationMinutes: pick(DURATIONS),
@@ -272,14 +272,14 @@ async function main() {
 
   const [aCount, cCount, tCount, bCount] = await Promise.all([
     prisma.adminUser.count(),
-    prisma.customer.count(),
+    prisma.user.count(),
     prisma.transaction.count(),
     prisma.booking.count(),
   ]);
 
   console.log('✅ Seed complete');
   console.log(`   Admin users:  ${aCount}`);
-  console.log(`   Customers:    ${cCount}`);
+  console.log(`   Users:        ${cCount}`);
   console.log(`   Transactions: ${tCount}`);
   console.log(`   Bookings:     ${bCount}`);
   console.log(`\n   Admin login → ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
