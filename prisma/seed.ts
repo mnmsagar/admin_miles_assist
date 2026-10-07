@@ -78,6 +78,7 @@ async function main() {
   console.log('🌱 Seeding AdminHub database...');
 
   // Clean slate (respect FK order)
+  await prisma.adminActivityLog.deleteMany();
   await prisma.transactionEvent.deleteMany();
   await prisma.bookingEvent.deleteMany();
   await prisma.activityLog.deleteMany();
@@ -90,10 +91,11 @@ async function main() {
   await prisma.adminUser.deleteMany();
 
   // ─── Admin users ───
+  const adminUsers = [];
   const adminHash = await bcrypt.hash(ADMIN_PASSWORD, SALT_ROUNDS);
   const staffHash = await bcrypt.hash('Password@123', SALT_ROUNDS);
 
-  await prisma.adminUser.create({
+  const superAdmin = await prisma.adminUser.create({
     data: {
       displayId: pad('ADM', 1),
       fullName: 'System Administrator',
@@ -107,10 +109,11 @@ async function main() {
       lastActiveAt: new Date(),
     },
   });
+  adminUsers.push(superAdmin);
 
   for (let i = 0; i < ADMIN_SEED.length; i++) {
     const a = ADMIN_SEED[i];
-    await prisma.adminUser.create({
+    const staff = await prisma.adminUser.create({
       data: {
         displayId: pad('ADM', i + 2),
         fullName: a.fullName,
@@ -123,6 +126,7 @@ async function main() {
         lastActiveAt: new Date(Date.now() - randInt(0, 5) * 86400000),
       },
     });
+    adminUsers.push(staff);
   }
 
   // ─── Users (website end-users) ───
