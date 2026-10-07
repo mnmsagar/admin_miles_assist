@@ -114,6 +114,7 @@ model Customer {
   phone            String?
   dateOfBirth      DateTime?     @db.Date
   mailingAddress   String?
+  role             AdminRole     @default(VIEWER)
   status           AccountStatus @default(ACTIVE)
   avatarUrl        String?
   twoFactorEnabled Boolean       @default(false)
@@ -126,6 +127,7 @@ model Customer {
   bookings     Booking[]
   activityLogs ActivityLog[]
 
+  @@index([role])
   @@index([status])
   @@index([joinedAt])
   @@index([fullName])

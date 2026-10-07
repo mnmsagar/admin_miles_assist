@@ -44,7 +44,7 @@ export class CustomersController {
 
   @Patch('bulk')
   @Roles(AdminRole.SUPER_ADMIN, AdminRole.ADMIN)
-  @ApiOperation({ summary: 'Bulk suspend / activate customers' })
+  @ApiOperation({ summary: 'Bulk change role / suspend / activate customers' })
   bulk(@Body() dto: BulkCustomersDto) {
     return this.customersService.bulk(dto);
   }

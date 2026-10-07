@@ -16,7 +16,7 @@ import {
 } from '../common/pagination/paginate';
 import { nextDisplayId } from '../common/utils/display-id';
 
-const SORTABLE = ['fullName', 'email', 'status', 'joinedAt', 'lastActiveAt'];
+const SORTABLE = ['fullName', 'email', 'role', 'status', 'joinedAt', 'lastActiveAt'];
 
 @Injectable()
 export class CustomersService {
@@ -31,6 +31,7 @@ export class CustomersService {
         { email: { contains: query.search, mode: 'insensitive' } },
       ];
     }
+    if (query.role) where.role = query.role;
     if (query.status) where.status = query.status;
 
     const joined = dateRangeFilter(query.dateFrom, query.dateTo);
@@ -80,6 +81,7 @@ export class CustomersService {
         phone: dto.phone,
         dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
         mailingAddress: dto.mailingAddress,
+        role: dto.role,
         status: dto.status,
         avatarUrl: dto.avatarUrl,
         twoFactorEnabled: dto.twoFactorEnabled,
@@ -105,10 +107,21 @@ export class CustomersService {
   }
 
   async bulk(dto: BulkCustomersDto) {
-    const status = dto.action === 'SUSPEND' ? 'SUSPENDED' : 'ACTIVE';
+    const data: Prisma.CustomerUpdateManyMutationInput = {};
+    switch (dto.action) {
+      case 'CHANGE_ROLE':
+        data.role = dto.role;
+        break;
+      case 'SUSPEND':
+        data.status = 'SUSPENDED';
+        break;
+      case 'ACTIVATE':
+        data.status = 'ACTIVE';
+        break;
+    }
     const result = await this.prisma.customer.updateMany({
       where: { id: { in: dto.ids } },
-      data: { status },
+      data,
     });
     return { updated: result.count, action: dto.action };
   }

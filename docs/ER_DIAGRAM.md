@@ -39,6 +39,7 @@ erDiagram
         string phone
         date dateOfBirth
         string mailingAddress
+        enum role "SUPER_ADMIN|ADMIN|EDITOR|VIEWER"
         enum status "ACTIVE|INACTIVE|SUSPENDED"
         bool twoFactorEnabled
         datetime joinedAt
@@ -152,7 +153,7 @@ customers.
 
 ## Indexes
 - `AdminUser`: role, status, joinedAt, fullName, email
-- `Customer`: status, joinedAt, fullName, email
+- `Customer`: role, status, joinedAt, fullName, email
 - `Transaction`: customerId, status, type, occurredAt, amount
 - `Booking`: customerId, status, serviceType, scheduledAt, paymentStatus
 - Event/log/token tables: foreign keys + createdAt

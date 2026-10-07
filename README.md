@@ -135,12 +135,16 @@ revoked), and can be revoked via logout.
 ### Customers (website end-users)
 | Method | Path | Notes |
 |--------|------|-------|
-| GET | `/customers` | `page,limit,search,status,sortBy,sortOrder,dateFrom,dateTo` |
+| GET | `/customers` | `page,limit,search,role,status,sortBy,sortOrder,dateFrom,dateTo` |
 | GET | `/customers/:id` | + activity log, recent txns & bookings |
 | POST | `/customers` | Editor+ |
 | PATCH | `/customers/:id` | Editor+ |
-| PATCH | `/customers/bulk` | Bulk `SUSPEND\|ACTIVATE` |
+| PATCH | `/customers/bulk` | Bulk `CHANGE_ROLE\|SUSPEND\|ACTIVATE` |
 | DELETE | `/customers/:id` | Admin+ |
+
+> Customers also carry a `role` (Admin/Editor/Viewer), mirroring the Figma Users
+> Directory. It is a label on the customer record; admin-portal access is still
+> governed only by `AdminUser` roles.
 
 ### Transactions
 | Method | Path | Notes |

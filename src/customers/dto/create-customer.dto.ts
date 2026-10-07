@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AccountStatus } from '@prisma/client';
+import { AccountStatus, AdminRole } from '@prisma/client';
 import {
   IsBoolean,
   IsDateString,
@@ -34,6 +34,11 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   mailingAddress?: string;
+
+  @ApiPropertyOptional({ enum: AdminRole, default: AdminRole.VIEWER })
+  @IsOptional()
+  @IsEnum(AdminRole)
+  role?: AdminRole;
 
   @ApiPropertyOptional({ enum: AccountStatus, default: AccountStatus.ACTIVE })
   @IsOptional()

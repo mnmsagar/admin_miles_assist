@@ -45,23 +45,24 @@ const ADMIN_SEED = [
   { fullName: 'Cameron Williamson', email: 'cameron.w@adminhub.com', role: AdminRole.VIEWER },
 ];
 
-// Website end-users (customers with transactions/bookings)
+// Website end-users (customers with transactions/bookings).
+// Each carries a role, mirroring the Figma Users Directory (Admin/Editor/Viewer).
 const CUSTOMER_SEED = [
-  { fullName: 'Jane Cooper', email: 'jane.c@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Arlene McCoy', email: 'arlene.m@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Eleanor Pena', email: 'eleanor.p@example.com', status: AccountStatus.SUSPENDED },
-  { fullName: 'Robert Fox', email: 'robert.f@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Leslie Alexander', email: 'leslie.a@example.com', status: AccountStatus.INACTIVE },
-  { fullName: 'Guy Hawkins', email: 'guy.h@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Esther Howard', email: 'esther.h@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Jenny Wilson', email: 'jenny.w@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Kathryn Murphy', email: 'kathryn.m@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Cody Fisher', email: 'cody.f@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Albert Flores', email: 'albert.f@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Sarah Johnson', email: 'sarah.johnson@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Michael Brown', email: 'michael.b@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'Emily Davis', email: 'emily.d@example.com', status: AccountStatus.ACTIVE },
-  { fullName: 'David Wilson', email: 'david.w@example.com', status: AccountStatus.INACTIVE },
+  { fullName: 'Jane Cooper', email: 'jane.c@example.com', role: AdminRole.ADMIN, status: AccountStatus.ACTIVE },
+  { fullName: 'Arlene McCoy', email: 'arlene.m@example.com', role: AdminRole.EDITOR, status: AccountStatus.ACTIVE },
+  { fullName: 'Eleanor Pena', email: 'eleanor.p@example.com', role: AdminRole.VIEWER, status: AccountStatus.SUSPENDED },
+  { fullName: 'Robert Fox', email: 'robert.f@example.com', role: AdminRole.VIEWER, status: AccountStatus.ACTIVE },
+  { fullName: 'Leslie Alexander', email: 'leslie.a@example.com', role: AdminRole.EDITOR, status: AccountStatus.INACTIVE },
+  { fullName: 'Guy Hawkins', email: 'guy.h@example.com', role: AdminRole.VIEWER, status: AccountStatus.ACTIVE },
+  { fullName: 'Esther Howard', email: 'esther.h@example.com', role: AdminRole.EDITOR, status: AccountStatus.ACTIVE },
+  { fullName: 'Jenny Wilson', email: 'jenny.w@example.com', role: AdminRole.VIEWER, status: AccountStatus.ACTIVE },
+  { fullName: 'Kathryn Murphy', email: 'kathryn.m@example.com', role: AdminRole.VIEWER, status: AccountStatus.ACTIVE },
+  { fullName: 'Cody Fisher', email: 'cody.f@example.com', role: AdminRole.EDITOR, status: AccountStatus.ACTIVE },
+  { fullName: 'Albert Flores', email: 'albert.f@example.com', role: AdminRole.VIEWER, status: AccountStatus.ACTIVE },
+  { fullName: 'Sarah Johnson', email: 'sarah.johnson@example.com', role: AdminRole.ADMIN, status: AccountStatus.ACTIVE },
+  { fullName: 'Michael Brown', email: 'michael.b@example.com', role: AdminRole.VIEWER, status: AccountStatus.ACTIVE },
+  { fullName: 'Emily Davis', email: 'emily.d@example.com', role: AdminRole.EDITOR, status: AccountStatus.ACTIVE },
+  { fullName: 'David Wilson', email: 'david.w@example.com', role: AdminRole.VIEWER, status: AccountStatus.INACTIVE },
 ];
 
 const SERVICE_TYPES = Object.values(ServiceType);
@@ -133,6 +134,7 @@ async function main() {
         displayId: pad('USR', i + 1000),
         fullName: c.fullName,
         email: c.email,
+        role: c.role,
         status: c.status,
         phone: `+1 555-${pad('', randInt(100, 999)).slice(1)}`,
         dateOfBirth: new Date(randInt(1985, 1998), randInt(0, 11), randInt(1, 28)),
