@@ -76,6 +76,24 @@ npm run start:dev
 
 ---
 
+## Frontend (web app)
+A responsive React web app (desktop + mobile) lives in [`frontend/`](frontend/),
+built from the Figma design and wired to this API.
+
+- **Stack:** React 18 + Vite + TypeScript + Tailwind CSS + React Router + Recharts + lucide-react
+- **Design system:** Figma tokens (Indigo primary, Slate neutrals, Inter, semantic colors)
+- **Features:** JWT login with silent token refresh, protected routes, Dashboard (KPIs,
+  revenue chart, alerts, health), Users / Transactions / Bookings lists (search, filters,
+  pagination, CSV export) and detail views, responsive sidebar (desktop) + bottom-nav (mobile)
+
+```bash
+cd frontend
+npm install
+cp .env.example .env     # VITE_API_URL=http://localhost:3000/api
+npm run dev              # http://localhost:5173
+```
+Make sure the backend is running first. Log in with the demo admin below.
+
 ## Test Admin Credentials
 | Email | Password |
 |-------|----------|
